@@ -1,0 +1,9 @@
+{
+  "name": "OpenPrompt",
+  "description": "OpenPrompt is a community-driven platform to create, share, and test prompts and AI agents. Explore a library of curated prompts, configure agents with specific behaviors, and experiment in a real-time playground.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "prompt": ""
+}

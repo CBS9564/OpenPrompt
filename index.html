@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenPrompt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              border: '#334155',      // slate-700
+              background: '#020617', // slate-950
+              content: '#0f172a',    // slate-900
+              sidebar: '#0f172a',    // slate-900
+              card: {
+                DEFAULT: '#1e293b', // slate-800
+                hover: '#334155',   // slate-700
+              },
+              primary: '#f1f5f9',    // slate-100
+              secondary: '#94a3b8',  // slate-400
+              accent: {
+                DEFAULT: '#8b5cf6', // violet-500
+                foreground: '#f1f5f9',
+              },
+              destructive: '#ef4444', // red-500
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #020617;
+      }
+      /* For custom scrollbars */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a; /* slate-900 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155; /* slate-700 */
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569; /* slate-600 */
+      }
+      .bg-grid-pattern {
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 2rem 2rem;
+      }
+    </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.9.0",
+    "sql.js": "https://esm.sh/sql.js@1.10.3",
+    "pdfjs-dist/": "https://esm.sh/pdfjs-dist@^5.3.93/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-background text-primary">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
