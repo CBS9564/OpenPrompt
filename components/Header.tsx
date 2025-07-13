@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { CogIcon } from './icons/CogIcon';
 import { LogoutIcon } from './icons/LogoutIcon';
 import { ChevronDownIcon } from './icons/ChevronDownIcon';
+import { BoltIcon } from './icons/BoltIcon';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 
 interface HeaderProps {
     onSettingsClick: () => void;
     onProfileClick: () => void;
+    navigate: (path: string) => void; // Add navigate prop
 }
 
-const Header: React.FC<HeaderProps> = ({ onSettingsClick, onProfileClick }) => {
+const Header: React.FC<HeaderProps> = ({ onSettingsClick, onProfileClick, navigate }) => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -44,6 +47,11 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onProfileClick }) => {
                     <button onClick={() => { onSettingsClick(); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-secondary hover:bg-card-hover hover:text-primary rounded-md">
                       <CogIcon className="w-4 h-4"/> Settings
                     </button>
+                    {user?.role === 'admin' && (
+                        <button onClick={() => { navigate('/admin'); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-secondary hover:bg-card-hover hover:text-primary rounded-md">
+                            <BoltIcon className="w-4 h-4"/> Admin Dashboard
+                        </button>
+                    )}
                     <button onClick={logout} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md">
                       <LogoutIcon className="w-4 h-4"/> Logout
                     </button>

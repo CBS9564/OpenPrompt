@@ -1,509 +1,289 @@
-import initSqlJs, { Database } from 'sql.js';
-import { Prompt, Agent, Persona, ContextItem, Comment, Attachment } from '../types';
-import { COMMUNITY_PROMPTS, COMMUNITY_AGENTS, COMMUNITY_PERSONAS, COMMUNITY_CONTEXTS } from '../constants';
+import { Prompt, Agent, Persona, ContextItem, Comment, Attachment, User } from '../types';
 
-let db: Database | null = null;
+const API_BASE_URL = 'http://localhost:3001/api'; // Replace with your backend URL in production
 
-const DB_SCHEMA = `
-CREATE TABLE IF NOT EXISTS prompts (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  tags TEXT,
-  text TEXT NOT NULL,
-  category TEXT NOT NULL,
-  author TEXT,
-  isRecommended INTEGER,
-  createdAt INTEGER,
-  isPublic INTEGER NOT NULL,
-  supportedInputs TEXT
-);
+interface ApiResponse<T> {
+    data?: T;
+    message?: string;
+    error?: string;
+}
 
-CREATE TABLE IF NOT EXISTS agents (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  tags TEXT,
-  systemInstruction TEXT NOT NULL,
-  author TEXT,
-  isRecommended INTEGER,
-  createdAt INTEGER,
-  isPublic INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS personas (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  tags TEXT,
-  systemInstruction TEXT NOT NULL,
-  author TEXT,
-  isRecommended INTEGER,
-  createdAt INTEGER,
-  isPublic INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS contexts (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  content TEXT NOT NULL,
-  author TEXT,
-  tags TEXT,
-  isPublic INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS attachments (
-  id TEXT PRIMARY KEY,
-  itemId TEXT NOT NULL,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL,
-  mimeType TEXT,
-  content TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS likes (
-  itemId TEXT NOT NULL,
-  userId TEXT NOT NULL,
-  PRIMARY KEY (itemId, userId)
-);
-
-CREATE TABLE IF NOT EXISTS comments (
-  id TEXT PRIMARY KEY,
-  itemId TEXT NOT NULL,
-  userId TEXT NOT NULL,
-  authorName TEXT NOT NULL,
-  authorAvatar TEXT,
-  content TEXT NOT NULL,
-  createdAt INTEGER NOT NULL
-);
-`;
-
-const toBase64 = (arr: Uint8Array): string => btoa(String.fromCharCode.apply(null, Array.from(arr)));
-const fromBase64 = (str: string): Uint8Array => new Uint8Array(atob(str).split('').map(c => c.charCodeAt(0)));
-
-const seedData = (dbInstance: Database) => {
-    COMMUNITY_PROMPTS.forEach(p => {
-        dbInstance.run('INSERT INTO prompts (id, title, description, tags, text, category, author, isRecommended, createdAt, isPublic, supportedInputs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-            p.id, p.title, p.description, JSON.stringify(p.tags), p.text, p.category, p.author, p.isRecommended ? 1 : 0, p.createdAt || Date.now(), p.isPublic ? 1 : 0, JSON.stringify(p.supportedInputs || [])
-        ]);
-    });
-    COMMUNITY_AGENTS.forEach(a => {
-        dbInstance.run('INSERT INTO agents (id, title, description, tags, systemInstruction, author, isRecommended, createdAt, isPublic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-            a.id, a.title, a.description, JSON.stringify(a.tags), a.systemInstruction, a.author, a.isRecommended ? 1 : 0, a.createdAt || Date.now(), a.isPublic ? 1 : 0
-        ]);
-    });
-    COMMUNITY_PERSONAS.forEach(p => {
-        dbInstance.run('INSERT INTO personas (id, title, description, tags, systemInstruction, author, isRecommended, createdAt, isPublic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-            p.id, p.title, p.description, JSON.stringify(p.tags), p.systemInstruction, p.author, p.isRecommended ? 1 : 0, p.createdAt || Date.now(), p.isPublic ? 1 : 0
-        ]);
-    });
-    COMMUNITY_CONTEXTS.forEach(c => {
-        dbInstance.run('INSERT INTO contexts (id, title, description, content, author, tags, isPublic) VALUES (?, ?, ?, ?, ?, ?, ?)', [
-            c.id, c.title, c.description, c.content, c.author, JSON.stringify(c.tags), c.isPublic ? 1 : 0
-        ]);
-    });
-};
-
-const saveDatabase = () => {
-    if (!db) return;
-    try {
-        const data = db.export();
-        localStorage.setItem('sql-db', toBase64(data));
-    } catch (e) {
-        console.error("Failed to save database to localStorage:", e);
+const fetchApi = async <T>(endpoint: string, method: string = 'GET', body?: any, token?: string): Promise<ApiResponse<T>> => {
+    const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
     }
-};
 
-const rowsFromSqlResult = (res: any[]) => {
-    if (!res || res.length === 0) return [];
-    const { columns, values } = res[0];
-    return values.map(valueRow => {
-        const row: { [key: string]: any } = {};
-        columns.forEach((col, i) => {
-            row[col] = valueRow[i];
-        });
-        return row;
-    });
-};
+    const config: RequestInit = {
+        method,
+        headers,
+    };
+    if (body) {
+        config.body = JSON.stringify(body);
+    }
 
-export const init = async () => {
-    if (db) return;
     try {
-        const SQL = await initSqlJs({ locateFile: file => `https://esm.sh/sql.js@1.10.3/dist/${file}` });
-        const schemaSql = DB_SCHEMA;
-        
-        const savedDb = localStorage.getItem('sql-db');
-        
-        if (savedDb) {
-            let dbArray: Uint8Array;
-            // Migration from old comma-separated string format to new Base64 format
-            if (savedDb.includes(',')) {
-                console.log("Migrating database from old format...");
-                dbArray = new Uint8Array(savedDb.split(',').map(Number));
-            } else {
-                dbArray = fromBase64(savedDb);
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        const data = await response.json();
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                // Redirect to login page if unauthorized or forbidden
+                window.location.href = '/'; // Assuming '/' is your login page
             }
-            db = new SQL.Database(dbArray);
-        } else {
-            db = new SQL.Database();
+            return { error: data.message || response.statusText };
         }
-
-        // Execute schema to create tables if they don't exist (for migration)
-        db.exec(schemaSql);
-        
-        // Seed data only if it was a new database
-        if (!savedDb) {
-            console.log("Seeding new database...");
-            seedData(db);
-        }
-        
-        saveDatabase();
-
-    } catch (e) {
-        console.error("Failed to initialize database. Wiping localStorage and starting fresh.", e);
-        localStorage.removeItem('sql-db');
-        // This path is for when loading the DB from localStorage fails, or fetching schema fails.
-        // We'll try one more time to create a fresh DB.
-        try {
-            const SQL = await initSqlJs({ locateFile: file => `https://esm.sh/sql.js@1.10.3/dist/${file}` });
-            const schemaSql = DB_SCHEMA;
-            db = new SQL.Database();
-            db.exec(schemaSql);
-            seedData(db);
-            saveDatabase();
-        } catch (retryError) {
-            console.error("CRITICAL: Failed to initialize a fresh database on retry:", retryError);
-        }
+        return { data };
+    } catch (error: any) {
+        return { error: error.message || 'Network error' };
     }
 };
 
-const parsePrompt = (p: any): Prompt => ({
-    ...p,
-    tags: JSON.parse(p.tags),
-    supportedInputs: JSON.parse(p.supportedInputs),
-    isRecommended: p.isRecommended === 1,
-    isPublic: p.isPublic === 1,
-    likeCount: p.likeCount,
-    commentCount: p.commentCount,
-});
-
-const parseAgent = (a: any): Agent => ({
-    ...a,
-    tags: JSON.parse(a.tags),
-    isRecommended: a.isRecommended === 1,
-    isPublic: a.isPublic === 1,
-    likeCount: a.likeCount,
-    commentCount: a.commentCount,
-});
-
-const parsePersona = (p: any): Persona => ({
-    ...p,
-    tags: JSON.parse(p.tags),
-    isRecommended: p.isRecommended === 1,
-    isPublic: p.isPublic === 1,
-    likeCount: p.likeCount,
-    commentCount: p.commentCount,
-});
-
-const getItemsWithCountsQuery = (tableName: string) => `
-    SELECT p.*,
-        (SELECT COUNT(*) FROM likes WHERE itemId = p.id) as likeCount,
-        (SELECT COUNT(*) FROM comments WHERE itemId = p.id) as commentCount
-    FROM ${tableName} p
-`;
-
-export const getPrompts = async (): Promise<Prompt[]> => {
-    if (!db) await init();
-    const res = db!.exec(getItemsWithCountsQuery('prompts'));
-    const prompts = rowsFromSqlResult(res).map(parsePrompt);
-    for (const prompt of prompts) {
-        const attachmentsRes = db!.exec('SELECT * FROM attachments WHERE itemId = ?', [prompt.id]);
-        prompt.attachments = rowsFromSqlResult(attachmentsRes);
+// Prompts
+export const getPrompts = async (token: string): Promise<Prompt[]> => {
+    const { data, error } = await fetchApi<Prompt[]>('/prompts', 'GET', undefined, token);
+    if (error) {
+        console.error("Error fetching prompts:", error);
+        return [];
     }
-    return prompts;
+    return data || [];
 };
 
-export const getPromptById = async (id: string): Promise<Prompt | null> => {
-    if (!db) await init();
-    const res = db!.exec(getItemsWithCountsQuery('prompts') + ' WHERE p.id = ?', [id]);
-    const row = rowsFromSqlResult(res)[0];
-    if (row) {
-        const prompt = parsePrompt(row);
-        const attachmentsRes = db!.exec('SELECT * FROM attachments WHERE itemId = ?', [prompt.id]);
-        prompt.attachments = rowsFromSqlResult(attachmentsRes);
-        return prompt;
+export const getPromptById = async (id: string, token: string): Promise<Prompt | null> => {
+    const { data, error } = await fetchApi<Prompt>(`/prompts/${id}`, 'GET', undefined, token);
+    if (error) {
+        console.error(`Error fetching prompt ${id}:`, error);
+        return null;
     }
-    return null;
+    return data || null;
 };
 
-export const addPrompt = async (prompt: Prompt, attachments: Omit<Attachment, 'id' | 'itemId'>[] = []) => {
-    if (!db) await init();
-    try {
-        db!.run('INSERT INTO prompts (id, title, description, tags, text, category, author, isRecommended, createdAt, isPublic, supportedInputs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-            prompt.id, prompt.title, prompt.description, JSON.stringify(prompt.tags), prompt.text, prompt.category, prompt.author, prompt.isRecommended ? 1 : 0, prompt.createdAt, prompt.isPublic ? 1 : 0, JSON.stringify(prompt.supportedInputs || [])
-        ]);
-        attachments.forEach(att => {
-            const attachmentId = `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            db!.run('INSERT INTO attachments (id, itemId, name, type, mimeType, content) VALUES (?, ?, ?, ?, ?, ?)', [
-                attachmentId, prompt.id, att.name, att.type, att.mimeType, att.content
-            ]);
-        });
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while adding prompt:", e);
+export const addPrompt = async (prompt: Prompt, attachments: Omit<Attachment, 'id' | 'itemId'>[] = [], token: string) => {
+    const { error } = await fetchApi('/prompts', 'POST', { ...prompt, attachments }, token);
+    if (error) {
+        console.error("Error adding prompt:", error);
+        throw new Error(error);
     }
 };
 
-export const updatePrompt = async (prompt: Prompt) => {
-    if (!db) await init();
-    try {
-        db!.run('UPDATE prompts SET title = ?, description = ?, tags = ?, text = ?, category = ?, isPublic = ? WHERE id = ?', [
-            prompt.title, prompt.description, JSON.stringify(prompt.tags), prompt.text, prompt.category, prompt.isPublic ? 1 : 0, prompt.id
-        ]);
-        db!.run('DELETE FROM attachments WHERE itemId = ?', [prompt.id]);
-        if (prompt.attachments) {
-            prompt.attachments.forEach(att => {
-                const attachmentId = att.id || `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-                db!.run('INSERT INTO attachments (id, itemId, name, type, mimeType, content) VALUES (?, ?, ?, ?, ?, ?)', [
-                    attachmentId, prompt.id, att.name, att.type, att.mimeType, att.content
-                ]);
-            });
-        }
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while updating prompt:", e);
+export const updatePrompt = async (prompt: Prompt, token: string) => {
+    const { error } = await fetchApi(`/prompts/${prompt.id}`, 'PUT', prompt, token);
+    if (error) {
+        console.error("Error updating prompt:", error);
+        throw new Error(error);
     }
 };
 
-export const deletePrompt = async (id: string) => {
-    if (!db) await init();
-    try {
-        db!.run('DELETE FROM prompts WHERE id = ?', [id]);
-        db!.run('DELETE FROM attachments WHERE itemId = ?', [id]);
-        db!.run('DELETE FROM likes WHERE itemId = ?', [id]);
-        db!.run('DELETE FROM comments WHERE itemId = ?', [id]);
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while deleting prompt:", e);
+export const deletePrompt = async (id: string, token: string) => {
+    const { error } = await fetchApi(`/prompts/${id}`, 'DELETE', undefined, token);
+    if (error) {
+        console.error("Error deleting prompt:", error);
+        throw new Error(error);
     }
 };
 
-export const getAgents = async (): Promise<Agent[]> => {
-    if (!db) await init();
-    const res = db!.exec(getItemsWithCountsQuery('agents'));
-    const agents = rowsFromSqlResult(res).map(parseAgent);
-    for (const agent of agents) {
-        const attachmentsRes = db!.exec('SELECT * FROM attachments WHERE itemId = ?', [agent.id]);
-        agent.attachments = rowsFromSqlResult(attachmentsRes);
+// Agents
+export const getAgents = async (token: string): Promise<Agent[]> => {
+    const { data, error } = await fetchApi<Agent[]>('/agents', 'GET', undefined, token);
+    if (error) {
+        console.error("Error fetching agents:", error);
+        return [];
     }
-    return agents;
+    return data || [];
 };
 
-export const getAgentById = async (id: string): Promise<Agent | null> => {
-    if (!db) await init();
-    const res = db!.exec(getItemsWithCountsQuery('agents') + ' WHERE p.id = ?', [id]);
-    const row = rowsFromSqlResult(res)[0];
-    if (row) {
-        const agent = parseAgent(row);
-        const attachmentsRes = db!.exec('SELECT * FROM attachments WHERE itemId = ?', [agent.id]);
-        agent.attachments = rowsFromSqlResult(attachmentsRes);
-        return agent;
+export const getAgentById = async (id: string, token: string): Promise<Agent | null> => {
+    const { data, error } = await fetchApi<Agent>(`/agents/${id}`, 'GET', undefined, token);
+    if (error) {
+        console.error(`Error fetching agent ${id}:`, error);
+        return null;
     }
-    return null;
+    return data || null;
 };
 
-export const addAgent = async (agent: Agent, attachments: Omit<Attachment, 'id' | 'itemId'>[] = []) => {
-    if (!db) await init();
-    try {
-        db!.run('INSERT INTO agents (id, title, description, tags, systemInstruction, author, isRecommended, createdAt, isPublic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-            agent.id, agent.title, agent.description, JSON.stringify(agent.tags), agent.systemInstruction, agent.author, agent.isRecommended ? 1 : 0, agent.createdAt, agent.isPublic ? 1 : 0
-        ]);
-        attachments.forEach(att => {
-            const attachmentId = `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            db!.run('INSERT INTO attachments (id, itemId, name, type, mimeType, content) VALUES (?, ?, ?, ?, ?, ?)', [
-                attachmentId, agent.id, att.name, att.type, att.mimeType, att.content
-            ]);
-        });
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while adding agent:", e);
+export const addAgent = async (agent: Agent, attachments: Omit<Attachment, 'id' | 'itemId'>[] = [], token: string) => {
+    const { error } = await fetchApi('/agents', 'POST', { ...agent, attachments }, token);
+    if (error) {
+        console.error("Error adding agent:", error);
+        throw new Error(error);
     }
 };
 
-export const updateAgent = async (agent: Agent) => {
-    if (!db) await init();
-    try {
-        db!.run('UPDATE agents SET title = ?, description = ?, tags = ?, systemInstruction = ?, isPublic = ? WHERE id = ?', [
-            agent.title, agent.description, JSON.stringify(agent.tags), agent.systemInstruction, agent.isPublic ? 1 : 0, agent.id
-        ]);
-        db!.run('DELETE FROM attachments WHERE itemId = ?', [agent.id]);
-        if (agent.attachments) {
-            agent.attachments.forEach(att => {
-                const attachmentId = att.id || `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-                db!.run('INSERT INTO attachments (id, itemId, name, type, mimeType, content) VALUES (?, ?, ?, ?, ?, ?)', [
-                    attachmentId, agent.id, att.name, att.type, att.mimeType, att.content
-                ]);
-            });
-        }
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while updating agent:", e);
+export const updateAgent = async (agent: Agent, token: string) => {
+    const { error } = await fetchApi(`/agents/${agent.id}`, 'PUT', agent, token);
+    if (error) {
+        console.error("Error updating agent:", error);
+        throw new Error(error);
     }
 };
 
-export const deleteAgent = async (id: string) => {
-    if (!db) await init();
-    try {
-        db!.run('DELETE FROM agents WHERE id = ?', [id]);
-        db!.run('DELETE FROM attachments WHERE itemId = ?', [id]);
-        db!.run('DELETE FROM likes WHERE itemId = ?', [id]);
-        db!.run('DELETE FROM comments WHERE itemId = ?', [id]);
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while deleting agent:", e);
+export const deleteAgent = async (id: string, token: string) => {
+    const { error } = await fetchApi(`/agents/${id}`, 'DELETE', undefined, token);
+    if (error) {
+        console.error("Error deleting agent:", error);
+        throw new Error(error);
     }
 };
 
-export const getPersonas = async (): Promise<Persona[]> => {
-    if (!db) await init();
-    const res = db!.exec(getItemsWithCountsQuery('personas'));
-    const personas = rowsFromSqlResult(res).map(parsePersona);
-    for (const persona of personas) {
-        const attachmentsRes = db!.exec('SELECT * FROM attachments WHERE itemId = ?', [persona.id]);
-        persona.attachments = rowsFromSqlResult(attachmentsRes);
+// Personas
+export const getPersonas = async (token: string): Promise<Persona[]> => {
+    const { data, error } = await fetchApi<Persona[]>('/personas', 'GET', undefined, token);
+    if (error) {
+        console.error("Error fetching personas:", error);
+        return [];
     }
-    return personas;
+    return data || [];
 };
 
-export const getPersonaById = async (id: string): Promise<Persona | null> => {
-    if (!db) await init();
-    const res = db!.exec(getItemsWithCountsQuery('personas') + ' WHERE p.id = ?', [id]);
-    const row = rowsFromSqlResult(res)[0];
-    if (row) {
-        const persona = parsePersona(row);
-        const attachmentsRes = db!.exec('SELECT * FROM attachments WHERE itemId = ?', [persona.id]);
-        persona.attachments = rowsFromSqlResult(attachmentsRes);
-        return persona;
+export const getPersonaById = async (id: string, token: string): Promise<Persona | null> => {
+    const { data, error } = await fetchApi<Persona>(`/personas/${id}`, 'GET', undefined, token);
+    if (error) {
+        console.error(`Error fetching persona ${id}:`, error);
+        return null;
     }
-    return null;
+    return data || null;
 };
 
-export const addPersona = async (persona: Persona, attachments: Omit<Attachment, 'id' | 'itemId'>[] = []) => {
-    if (!db) await init();
-    try {
-        db!.run('INSERT INTO personas (id, title, description, tags, systemInstruction, author, isRecommended, createdAt, isPublic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-            persona.id, persona.title, persona.description, JSON.stringify(persona.tags), persona.systemInstruction, persona.author, persona.isRecommended ? 1 : 0, persona.createdAt, persona.isPublic ? 1 : 0
-        ]);
-        attachments.forEach(att => {
-            const attachmentId = `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            db!.run('INSERT INTO attachments (id, itemId, name, type, mimeType, content) VALUES (?, ?, ?, ?, ?, ?)', [
-                attachmentId, persona.id, att.name, att.type, att.mimeType, att.content
-            ]);
-        });
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while adding persona:", e);
+export const addPersona = async (persona: Persona, attachments: Omit<Attachment, 'id' | 'itemId'>[] = [], token: string) => {
+    const { error } = await fetchApi('/personas', 'POST', { ...persona, attachments }, token);
+    if (error) {
+        console.error("Error adding persona:", error);
+        throw new Error(error);
     }
 };
 
-export const updatePersona = async (persona: Persona) => {
-    if (!db) await init();
-    try {
-        db!.run('UPDATE personas SET title = ?, description = ?, tags = ?, systemInstruction = ?, isPublic = ? WHERE id = ?', [
-            persona.title, persona.description, JSON.stringify(persona.tags), persona.systemInstruction, persona.isPublic ? 1 : 0, persona.id
-        ]);
-        db!.run('DELETE FROM attachments WHERE itemId = ?', [persona.id]);
-        if (persona.attachments) {
-            persona.attachments.forEach(att => {
-                const attachmentId = att.id || `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-                db!.run('INSERT INTO attachments (id, itemId, name, type, mimeType, content) VALUES (?, ?, ?, ?, ?, ?)', [
-                    attachmentId, persona.id, att.name, att.type, att.mimeType, att.content
-                ]);
-            });
-        }
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while updating persona:", e);
+export const updatePersona = async (persona: Persona, token: string) => {
+    const { error } = await fetchApi(`/personas/${persona.id}`, 'PUT', persona, token);
+    if (error) {
+        console.error("Error updating persona:", error);
+        throw new Error(error);
     }
 };
 
-export const deletePersona = async (id: string) => {
-    if (!db) await init();
-    try {
-        db!.run('DELETE FROM personas WHERE id = ?', [id]);
-        db!.run('DELETE FROM attachments WHERE itemId = ?', [id]);
-        db!.run('DELETE FROM likes WHERE itemId = ?', [id]);
-        db!.run('DELETE FROM comments WHERE itemId = ?', [id]);
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while deleting persona:", e);
+export const deletePersona = async (id: string, token: string) => {
+    const { error } = await fetchApi(`/personas/${id}`, 'DELETE', undefined, token);
+    if (error) {
+        console.error("Error deleting persona:", error);
+        throw new Error(error);
     }
 };
 
-export const getContexts = async (): Promise<ContextItem[]> => {
-    if (!db) await init();
-    const res = db!.exec('SELECT * FROM contexts');
-    return rowsFromSqlResult(res).map((c: any) => ({
-        ...c,
-        tags: JSON.parse(c.tags),
-        isPublic: c.isPublic === 1,
-    }));
+// Contexts
+export const getContexts = async (token: string): Promise<ContextItem[]> => {
+    const { data, error } = await fetchApi<ContextItem[]>('/contexts', 'GET', undefined, token);
+    if (error) {
+        console.error("Error fetching contexts:", error);
+        return [];
+    }
+    return data || [];
 };
 
-export const addContext = async (context: ContextItem) => {
-    if (!db) await init();
-    try {
-        db!.run('INSERT INTO contexts (id, title, description, content, author, tags, isPublic) VALUES (?, ?, ?, ?, ?, ?, ?)', [
-            context.id, context.title, context.description, context.content, context.author, JSON.stringify(context.tags), context.isPublic ? 1 : 0
-        ]);
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while adding context:", e);
+export const addContext = async (context: ContextItem, token: string) => {
+    const { data, error } = await fetchApi('/contexts', 'POST', context, token);
+    if (error) {
+        console.error("Error adding context:", error);
+        throw new Error(error);
     }
+    return { data };
 };
 
 // Social Features
-export const getCommentsForItem = async (itemId: string): Promise<Comment[]> => {
-    if (!db) await init();
-    const res = db!.exec('SELECT * FROM comments WHERE itemId = ? ORDER BY createdAt DESC', [itemId]);
-    return rowsFromSqlResult(res);
+export const getCommentsForItem = async (itemId: string, token: string): Promise<Comment[]> => {
+    const { data, error } = await fetchApi<Comment[]>(`/comments/${itemId}`, 'GET', undefined, token);
+    if (error) {
+        console.error(`Error fetching comments for item ${itemId}:`, error);
+        return [];
+    }
+    return data || [];
 };
 
-export const hasUserLikedItem = async (itemId: string, userId: string): Promise<boolean> => {
-    if (!db) await init();
-    const res = db!.exec('SELECT COUNT(*) FROM likes WHERE itemId = ? AND userId = ?', [itemId, userId]);
-    return res[0].values[0][0] === 1;
+export const hasUserLikedItem = async (itemId: string, userId: string, token: string): Promise<boolean> => {
+    const { data, error } = await fetchApi<{ hasLiked: boolean }>(`/likes/${itemId}/${userId}`, 'GET', undefined, token);
+    if (error) {
+        console.error(`Error checking like status for item ${itemId} by user ${userId}:`, error);
+        return false;
+    }
+    return data?.hasLiked || false;
 };
 
-export const addLike = async (itemId: string, userId: string) => {
-    if (!db) await init();
-    try {
-        db!.run('INSERT OR IGNORE INTO likes (itemId, userId) VALUES (?, ?)', [itemId, userId]);
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while adding like:", e);
+export const addLike = async (itemId: string, userId: string, token: string) => {
+    const { error } = await fetchApi('/likes', 'POST', { itemId, userId }, token);
+    if (error) {
+        console.error("Error adding like:", error);
+        throw new Error(error);
     }
 };
 
-export const removeLike = async (itemId: string, userId: string) => {
-    if (!db) await init();
-    try {
-        db!.run('DELETE FROM likes WHERE itemId = ? AND userId = ?', [itemId, userId]);
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while removing like:", e);
+export const removeLike = async (itemId: string, userId: string, token: string) => {
+    const { error } = await fetchApi('/likes', 'DELETE', { itemId, userId }, token);
+    if (error) {
+        console.error("Error removing like:", error);
+        throw new Error(error);
     }
 };
 
-export const addComment = async (comment: Comment) => {
-    if (!db) await init();
-    try {
-        db!.run('INSERT INTO comments (id, itemId, userId, authorName, authorAvatar, content, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)', [
-            comment.id, comment.itemId, comment.userId, comment.authorName, comment.authorAvatar, comment.content, comment.createdAt
-        ]);
-        saveDatabase();
-    } catch (e) {
-        console.error("Database error while adding comment:", e);
+export const addComment = async (comment: Comment, token: string) => {
+    const { error } = await fetchApi('/comments', 'POST', comment, token);
+    if (error) {
+        console.error("Error adding comment:", error);
+        throw new Error(error);
     }
 };
+
+// Auth
+export const registerUser = async (email: string, password: string, name?: string): Promise<ApiResponse<{ userId: string }>> => {
+    return fetchApi<{ userId: string }>('/auth/register', 'POST', { email, password, name });
+};
+
+export const loginUser = async (email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> => {
+    return fetchApi<{ token: string; user: User }>('/auth/login', 'POST', { email, password });
+};
+
+// Admin
+export const getUsers = async (token: string): Promise<User[]> => {
+    const { data, error } = await fetchApi<User[]>('/admin/users', 'GET', undefined, token);
+    if (error) {
+        console.error("Error fetching users:", error);
+        return [];
+    }
+    return data || [];
+};
+
+export const deleteUser = async (id: string, token: string) => {
+    const { error } = await fetchApi(`/admin/users/${id}`, 'DELETE', undefined, token);
+    if (error) {
+        console.error("Error deleting user:", error);
+        throw new Error(error);
+    }
+};
+
+export const updateUser = async (user: User, token: string) => {
+    const { error } = await fetchApi(`/admin/users/${user.id}`, 'PUT', user, token);
+    if (error) {
+        console.error("Error updating user:", error);
+        throw new Error(error);
+    }
+};
+
+export const getAdminComments = async (token: string): Promise<Comment[]> => {
+    const { data, error } = await fetchApi<Comment[]>('/admin/comments', 'GET', undefined, token);
+    if (error) {
+        console.error("Error fetching admin comments:", error);
+        return [];
+    }
+    return data || [];
+};
+
+export const deleteAdminComment = async (id: string, token: string) => {
+    const { error } = await fetchApi(`/admin/comments/${id}`, 'DELETE', undefined, token);
+    if (error) {
+        console.error("Error deleting admin comment:", error);
+        throw new Error(error);
+    }
+};
+
+
+export const exportDbAsFile = async () => { console.warn("exportDbAsFile is deprecated. Data is now managed by the backend."); };
+export const importDbFromFile = async (file: File) => { console.warn("importDbFromFile is deprecated. Data is now managed by the backend."); };

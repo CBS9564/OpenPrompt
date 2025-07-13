@@ -1,6 +1,8 @@
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { View, Prompt, Agent, Persona, ContextItem, PlaygroundItem, ApiKeys, PublishableItem, SortOrder, MultimodalFilter, User, Comment, OllamaCredentials } from './types';
 import { useAuth } from './contexts/AuthContext';
 import * as db from './services/dbService';
@@ -18,12 +20,12 @@ import PromptCard from './components/PromptCard';
 import AgentCard from './components/AgentCard';
 import PersonaCard from './components/PersonaCard';
 import ContextCard from './components/ContextCard';
+import AdminPage from './components/AdminPage'; // Import the new AdminPage
 
-// Main App Component
-const App: React.FC = () => {
-    // Component State
-    const { user, login } = useAuth();
-    const [view, setView] = useState<View>(View.HOME);
+const AppContent: React.FC = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { user, token, login } = useAuth(); // Get token from useAuth
     const [selectedDetailItem, setSelectedDetailItem] = useState<PlaygroundItem | null>(null);
 
     // Data State
@@ -47,73 +49,93 @@ const App: React.FC = () => {
     // DB Initialization
     useEffect(() => {
         const initDb = async () => {
-            await db.init();
-            loadAllData();
-            // Load settings from localStorage
-            const savedKeys = localStorage.getItem('openprompt_apikeys');
-            if (savedKeys) {
-                setApiKeys(JSON.parse(savedKeys));
+            try {
+                if (token) { // Only load data if authenticated
+                    await loadAllData(token);
+                }
+                const savedKeys = localStorage.getItem('openprompt_apikeys');
+                if (savedKeys) {
+                    setApiKeys(JSON.parse(savedKeys));
+                }
+            } catch (error) {
+                console.error("Failed to initialize the database:", error);
             }
         };
         initDb();
-    }, []);
+
+        // Redirect if trying to access /create without being logged in
+        if (location.pathname === '/create' && !user) {
+            navigate('/');
+        }
+    }, [token, user, location.pathname, navigate]); // Re-run when token, user, or path changes
 
     // Data Loading
-    const loadAllData = useCallback(async () => {
-        setPrompts(await db.getPrompts());
-        setAgents(await db.getAgents());
-        setPersonas(await db.getPersonas());
-        setContexts(await db.getContexts());
+    const loadAllData = useCallback(async (authToken: string) => {
+        try {
+            setPrompts(await db.getPrompts(authToken));
+            setAgents(await db.getAgents(authToken));
+            setPersonas(await db.getPersonas(authToken));
+            setContexts(await db.getContexts(authToken));
+        } catch (error) {
+            console.error("Failed to load data:", error);
+        }
     }, []);
 
     // Load social data when detail item changes
     useEffect(() => {
         const loadSocialData = async () => {
-            if (selectedDetailItem && user) {
-                setComments(await db.getCommentsForItem(selectedDetailItem.id));
-                setIsLiked(await db.hasUserLikedItem(selectedDetailItem.id, user.email));
+            if (selectedDetailItem && user && token) {
+                try {
+                    setComments(await db.getCommentsForItem(selectedDetailItem.id, token));
+                    setIsLiked(await db.hasUserLikedItem(selectedDetailItem.id, user.email, token));
+                } catch (error) {
+                    console.error("Failed to load social data:", error);
+                }
             } else {
                 setComments([]);
                 setIsLiked(false);
             }
         };
         loadSocialData();
-    }, [selectedDetailItem, user]);
+    }, [selectedDetailItem, user, token]);
     
     // Navigation Handlers
     const handleViewChange = (newView: View) => {
-        setView(newView);
         setSelectedDetailItem(null);
         setSearchQuery('');
+        navigate(newView);
     };
 
     const handleNavigateToDetail = async (id: string, type: 'prompt' | 'agent' | 'persona') => {
+        if (!token) return; // Require token for detail view
         let item: PlaygroundItem | null = null;
-        switch(type) {
-            case 'prompt': 
-                const p = await db.getPromptById(id);
-                if(p) item = {...p, type: 'prompt'};
-                break;
-            case 'agent':
-                const a = await db.getAgentById(id);
-                if(a) item = {...a, type: 'agent'};
-                break;
-            case 'persona':
-                const pe = await db.getPersonaById(id);
-                if(pe) item = {...pe, type: 'persona'};
-                break;
-        }
-        if (item) {
-            setSelectedDetailItem(item);
-            // We don't change the main view, just show the detail item over it.
-            // A null selectedDetailItem means we are showing a list view or home.
+        try {
+            switch(type) {
+                case 'prompt': 
+                    const p = await db.getPromptById(id, token);
+                    if(p) item = {...p, type: 'prompt'};
+                    break;
+                case 'agent':
+                    const a = await db.getAgentById(id, token);
+                    if(a) item = {...a, type: 'agent'};
+                    break;
+                case 'persona':
+                    const pe = await db.getPersonaById(id, token);
+                    if(pe) item = {...pe, type: 'persona'};
+                    break;
+            }
+            if (item) {
+                setSelectedDetailItem(item);
+            }
+        } catch (error) {
+            console.error("Failed to navigate to detail:", error);
         }
     };
     
     // CRUD Handlers
     const handlePublish = async (item: PublishableItem) => {
+        if (!token) return; // Require token for publish
         const baseItem = {
-            id: `${item.type.slice(0,1)}${Date.now()}`,
             title: item.title,
             description: item.description,
             tags: item.tags,
@@ -123,44 +145,63 @@ const App: React.FC = () => {
             isRecommended: false,
         };
 
-        switch(item.type) {
-            case 'prompt':
-                await db.addPrompt({ ...baseItem, text: item.content, category: item.category || 'General', supportedInputs: [] }, item.attachments);
-                break;
-            case 'agent':
-                await db.addAgent({ ...baseItem, systemInstruction: item.content }, item.attachments);
-                break;
-            case 'persona':
-                await db.addPersona({ ...baseItem, systemInstruction: item.content }, item.attachments);
-                break;
-            case 'context':
-                await db.addContext({ ...baseItem, content: item.content });
-                break;
+        try {
+            let response;
+            switch(item.type) {
+                case 'prompt':
+                    response = await db.addPrompt({ ...baseItem, text: item.content, category: item.category || 'General', supportedInputs: [] }, item.attachments, token);
+                    break;
+                case 'agent':
+                    response = await db.addAgent({ ...baseItem, systemInstruction: item.content }, item.attachments, token);
+                    break;
+                case 'persona':
+                    response = await db.addPersona({ ...baseItem, systemInstruction: item.content }, item.attachments, token);
+                    break;
+                case 'context':
+                    response = await db.addContext({ ...baseItem, content: item.content }, token);
+                    break;
+            }
+            if (response?.data?.id) {
+                console.log(`${item.type} added with ID:`, response.data.id);
+            } else {
+                console.warn(`No ID returned for ${item.type} creation.`);
+            }
+            await loadAllData(token);
+            handleViewChange(View.HOME);
+        } catch (error) {
+            console.error("Failed to publish item:", error);
         }
-        await loadAllData();
-        handleViewChange(View.HOME);
     };
 
     const handleUpdateItem = async (item: PlaygroundItem) => {
-        switch(item.type) {
-            case 'prompt': await db.updatePrompt(item); break;
-            case 'agent': await db.updateAgent(item); break;
-            case 'persona': await db.updatePersona(item); break;
+        if (!token) return; // Require token for update
+        try {
+            switch(item.type) {
+                case 'prompt': await db.updatePrompt(item, token); break;
+                case 'agent': await db.updateAgent(item, token); break;
+                case 'persona': await db.updatePersona(item, token); break;
+            }
+            await loadAllData(token);
+            setSelectedDetailItem(item); // Keep viewing the updated item
+        } catch (error) {
+            console.error("Failed to update item:", error);
         }
-        await loadAllData();
-        setSelectedDetailItem(item); // Keep viewing the updated item
     };
     
     const handleDeleteItem = async (item: PlaygroundItem) => {
+        if (!token) return; // Require token for delete
         if (!window.confirm(`Are you sure you want to delete "${item.title}"?`)) return;
-        switch(item.type) {
-            case 'prompt': await db.deletePrompt(item.id); break;
-            case 'agent': await db.deleteAgent(item.id); break;
-            case 'persona': await db.deletePersona(item.id); break;
+        try {
+            switch(item.type) {
+                case 'prompt': await db.deletePrompt(item.id, token); break;
+                case 'agent': await db.deleteAgent(item.id, token); break;
+                case 'persona': await db.deletePersona(item.id, token); break;
+            }
+            await loadAllData(token);
+            setSelectedDetailItem(null);
+        } catch (error) {
+            console.error("Failed to delete item:", error);
         }
-        await loadAllData();
-        handleViewChange(view); // Go back to the list view
-        setSelectedDetailItem(null);
     };
     
     // Settings Handlers
@@ -168,7 +209,6 @@ const App: React.FC = () => {
         setApiKeys(keys);
         localStorage.setItem('openprompt_apikeys', JSON.stringify(keys));
         setIsSettingsOpen(false);
-        // re-fetch ollama models if url changed
         if (keys.ollama?.baseUrl !== apiKeys.ollama?.baseUrl) {
              handleFetchOllamaModels(keys.ollama);
         }
@@ -192,45 +232,48 @@ const App: React.FC = () => {
 
     // Social Handlers
     const handleToggleLike = async (itemId: string, isCurrentlyLiked: boolean) => {
-        if (!user) return;
-        if (isCurrentlyLiked) {
-            await db.removeLike(itemId, user.email);
-        } else {
-            await db.addLike(itemId, user.email);
-        }
-        setIsLiked(!isCurrentlyLiked);
-        // Refresh data to update like counts
-        await loadAllData();
-
-        const currentItem = selectedDetailItem;
-        if (!currentItem) return;
-
-        let playgroundItem: PlaygroundItem | null = null;
-        switch(currentItem.type) {
-            case 'prompt': {
-                const p = await db.getPromptById(itemId);
-                if (p) playgroundItem = {...p, type: 'prompt'};
-                break;
+        if (!user || !token) return; // Require user and token for like
+        try {
+            if (isCurrentlyLiked) {
+                await db.removeLike(itemId, user.email, token);
+            } else {
+                await db.addLike(itemId, user.email, token);
             }
-            case 'agent': {
-                const a = await db.getAgentById(itemId);
-                if (a) playgroundItem = {...a, type: 'agent'};
-                break;
-            }
-            case 'persona': {
-                const pe = await db.getPersonaById(itemId);
-                if (pe) playgroundItem = {...pe, type: 'persona'};
-                break;
-            }
-        }
+            setIsLiked(!isCurrentlyLiked);
+            await loadAllData(token);
 
-        if (playgroundItem) {
-             setSelectedDetailItem(playgroundItem);
+            const currentItem = selectedDetailItem;
+            if (!currentItem) return;
+
+            let playgroundItem: PlaygroundItem | null = null;
+            switch(currentItem.type) {
+                case 'prompt': {
+                    const p = await db.getPromptById(itemId, token);
+                    if (p) playgroundItem = {...p, type: 'prompt'};
+                    break;
+                }
+                case 'agent': {
+                    const a = await db.getAgentById(itemId, token);
+                    if (a) playgroundItem = {...a, type: 'agent'};
+                    break;
+                }
+                case 'persona': {
+                    const pe = await db.getPersonaById(itemId, token);
+                    if (pe) playgroundItem = {...pe, type: 'persona'};
+                    break;
+                }
+            }
+
+            if (playgroundItem) {
+                 setSelectedDetailItem(playgroundItem);
+            }
+        } catch (error) {
+            console.error("Failed to toggle like:", error);
         }
     };
     
     const handleAddComment = async (itemId: string, content: string) => {
-        if (!user) return;
+        if (!user || !token) return; // Require user and token for comment
         const newComment: Comment = {
             id: `comment-${Date.now()}`,
             itemId,
@@ -240,13 +283,15 @@ const App: React.FC = () => {
             content,
             createdAt: Date.now(),
         };
-        await db.addComment(newComment);
-        setComments(await db.getCommentsForItem(itemId));
-        await loadAllData(); // to update comment counts
+        try {
+            await db.addComment(newComment, token);
+            setComments(await db.getCommentsForItem(itemId, token));
+            await loadAllData(token);
+        } catch (error) {
+            console.error("Failed to add comment:", error);
+        }
     };
 
-
-    // Filtering logic
     const filterAndSort = <T extends (Prompt | Agent | Persona)>(items: T[], isMyLibrary: boolean): T[] => {
         if (!items || items.length === 0) return [];
         let filtered: T[];
@@ -266,140 +311,77 @@ const App: React.FC = () => {
             );
         }
         
-        const isPromptView = view === View.PROMPTS || view === View.MY_PROMPTS;
+        const isPromptView = location.pathname.includes('/prompts');
 
         if (isPromptView && multimodalFilter !== 'all') {
-            // This is safe because this code path is only taken for prompt views, 
-            // where `items` will be of type `Prompt[]`.
             filtered = filtered.filter(p => (p as Prompt).supportedInputs?.includes(multimodalFilter));
         }
 
         if (sortOrder === 'recent') {
             filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        } else { // 'recommended'
+        } else {
             filtered.sort((a, b) => (b.isRecommended ? 1 : 0) - (a.isRecommended ? 1 : 0));
         }
 
         return filtered;
     };
 
-    // Render logic
-    const renderContent = () => {
-        if (selectedDetailItem) {
-            return <DetailPage
-                item={selectedDetailItem}
-                onUpdate={handleUpdateItem}
-                onDelete={handleDeleteItem}
-                onBack={() => setSelectedDetailItem(null)}
-                apiKeys={apiKeys}
-                fetchedOllamaModels={fetchedOllamaModels}
-                contexts={contexts}
-                comments={comments}
-                isLiked={isLiked}
-                onToggleLike={handleToggleLike}
-                onAddComment={handleAddComment}
-            />
-        }
-        
-        switch (view) {
-            case View.HOME:
-                return <HomePage onViewChange={handleViewChange} user={user} onNavigateToDetail={handleNavigateToDetail} login={login}/>;
-            case View.PROMPTS:
-            case View.MY_PROMPTS:
-                const isMyPrompts = view === View.MY_PROMPTS;
-                const filteredPrompts = filterAndSort(prompts, isMyPrompts);
-                return (
-                    <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-                        <CommunityHeader
-                            title={isMyPrompts ? "My Prompts" : "Community Prompts"}
-                            subtitle={isMyPrompts ? "Your personal collection of prompts." : "Explore prompts created by the community."}
-                            showSort={true} sortOrder={sortOrder} onSortOrderChange={setSortOrder}
-                            searchQuery={searchQuery} onSearchChange={setSearchQuery}
-                            showMultimodalFilter={true}
-                            multimodalFilter={multimodalFilter} onMultimodalFilterChange={setMultimodalFilter}
-                        />
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {filteredPrompts.map(p => <PromptCard key={p.id} prompt={p} onSelect={() => handleNavigateToDetail(p.id, 'prompt')} showVisibility={isMyPrompts} />)}
-                        </div>
-                    </main>
-                );
-            case View.AGENTS:
-            case View.MY_AGENTS:
-                 const isMyAgents = view === View.MY_AGENTS;
-                 const filteredAgents = filterAndSort(agents, isMyAgents);
-                 return (
-                    <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-                        <CommunityHeader
-                            title={isMyAgents ? "My Agents" : "Community Agents"}
-                            subtitle={isMyAgents ? "Your personal collection of agents." : "Explore pre-configured AI agents with specific behaviors."}
-                            showSort={true} sortOrder={sortOrder} onSortOrderChange={setSortOrder}
-                            searchQuery={searchQuery} onSearchChange={setSearchQuery}
-                        />
-                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {filteredAgents.map(a => <AgentCard key={a.id} agent={a} onSelect={() => handleNavigateToDetail(a.id, 'agent')} showVisibility={isMyAgents} />)}
-                        </div>
-                    </main>
-                );
-            case View.PERSONAS:
-            case View.MY_PERSONAS:
-                 const isMyPersonas = view === View.MY_PERSONAS;
-                 const filteredPersonas = filterAndSort(personas, isMyPersonas);
-                 return (
-                    <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-                        <CommunityHeader
-                            title={isMyPersonas ? "My Personas" : "Community Personas"}
-                            subtitle={isMyPersonas ? "Your personal collection of personas." : "Explore fun and interesting AI personas for roleplaying."}
-                            showSort={true} sortOrder={sortOrder} onSortOrderChange={setSortOrder}
-                            searchQuery={searchQuery} onSearchChange={setSearchQuery}
-                        />
-                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {filteredPersonas.map(p => <PersonaCard key={p.id} persona={p} onSelect={() => handleNavigateToDetail(p.id, 'persona')} showVisibility={isMyPersonas} />)}
-                        </div>
-                    </main>
-                );
-            case View.CONTEXTS:
-            case View.MY_CONTEXTS:
-                 const isMyContexts = view === View.MY_CONTEXTS;
-                 let filteredContexts = isMyContexts && user ? contexts.filter(c => c.author === user.name) : contexts.filter(c => c.isPublic);
-                 if (searchQuery) {
-                     const q = searchQuery.toLowerCase();
-                     filteredContexts = filteredContexts.filter(c => 
-                        c.title.toLowerCase().includes(q) ||
-                        (c.description && c.description.toLowerCase().includes(q)) ||
-                        c.tags.some(t => t.toLowerCase().includes(q))
-                    );
-                 }
-                 return (
-                    <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-                        <CommunityHeader
-                            title={isMyContexts ? "My Contexts" : "Community Contexts"}
-                            subtitle={isMyContexts ? "Your private context files for injection." : "Shared context files for testing."}
-                            showSort={false}
-                            searchQuery={searchQuery} onSearchChange={setSearchQuery}
-                        />
-                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {filteredContexts.map(c => <ContextCard key={c.id} context={c} showVisibility={isMyContexts} />)}
-                        </div>
-                    </main>
-                );
-            case View.CREATE:
-                return <CreationPage onPublish={handlePublish} onCancel={() => setView(View.HOME)} apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} />;
-            case View.PROFILE:
-                return <ProfilePage onBack={() => setView(View.HOME)} />;
-            default:
-                return <HomePage onViewChange={handleViewChange} user={user} onNavigateToDetail={handleNavigateToDetail} login={login}/>;
-        }
+    const renderListPage = (title: string, subtitle: string, items: (Prompt[] | Agent[] | Persona[]), cardComponent: React.ElementType, itemType: 'prompt' | 'agent' | 'persona', isMyLibrary: boolean) => {
+        const filteredItems = filterAndSort(items as any, isMyLibrary);
+        return (
+            <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
+                <CommunityHeader
+                    title={title}
+                    subtitle={subtitle}
+                    showSort={true} sortOrder={sortOrder} onSortOrderChange={setSortOrder}
+                    searchQuery={searchQuery} onSearchChange={setSearchQuery}
+                    showMultimodalFilter={itemType === 'prompt'}
+                    multimodalFilter={multimodalFilter} onMultimodalFilterChange={setMultimodalFilter}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredItems.map((item: any) => React.createElement(cardComponent, { key: item.id, [itemType]: item, onSelect: () => handleNavigateToDetail(item.id, itemType), showVisibility: isMyLibrary }))}
+                </div>
+            </main>
+        );
     };
 
-    const showSidebar = view !== View.HOME;
-    const showHeader = view !== View.HOME || !!user;
+    const showSidebar = location.pathname !== '/';
+    const showHeader = location.pathname !== '/' || !!user;
 
     return (
         <div className="h-screen w-screen flex bg-background text-primary antialiased">
-            {showSidebar && <Sidebar activeView={view} onViewChange={handleViewChange} />}
+            {showSidebar && <Sidebar activeView={location.pathname as View} onViewChange={handleViewChange} />}
             <div className="flex-1 flex flex-col min-w-0">
-                {showHeader && <Header onSettingsClick={() => setIsSettingsOpen(true)} onProfileClick={() => setView(View.PROFILE)} />}
-                {renderContent()}
+                {showHeader && <Header onSettingsClick={() => setIsSettingsOpen(true)} onProfileClick={() => navigate('/profile')} navigate={navigate} />}
+                
+                {selectedDetailItem ? (
+                    <DetailPage
+                        item={selectedDetailItem}
+                        onUpdate={handleUpdateItem}
+                        onDelete={handleDeleteItem}
+                        onBack={() => setSelectedDetailItem(null)}
+                        apiKeys={apiKeys}
+                        fetchedOllamaModels={fetchedOllamaModels}
+                        contexts={contexts}
+                        comments={comments}
+                        isLiked={isLiked}
+                        onToggleLike={handleToggleLike}
+                        onAddComment={handleAddComment}
+                    />
+                ) : (
+                    <Routes>
+                        <Route path="/" element={<HomePage onViewChange={handleViewChange} user={user} onNavigateToDetail={handleNavigateToDetail} login={login}/>} />
+                        <Route path="/prompts" element={renderListPage("Community Prompts", "Explore prompts created by the community.", prompts, PromptCard, 'prompt', false)} />
+                        <Route path="/my-prompts" element={renderListPage("My Prompts", "Your personal collection of prompts.", prompts, PromptCard, 'prompt', true)} />
+                        <Route path="/agents" element={renderListPage("Community Agents", "Explore pre-configured AI agents with specific behaviors.", agents, AgentCard, 'agent', false)} />
+                        <Route path="/my-agents" element={renderListPage("My Agents", "Your personal collection of agents.", agents, AgentCard, 'agent', true)} />
+                        <Route path="/personas" element={renderListPage("Community Personas", "Explore fun and interesting AI personas for roleplaying.", personas, PersonaCard, 'persona', false)} />
+                        <Route path="/my-personas" element={renderListPage("My Personas", "Your personal collection of personas.", personas, PersonaCard, 'persona', true)} />
+                        <Route path="/create" element={<CreationPage onPublish={handlePublish} onCancel={() => navigate('/')} apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} />} />
+                        <Route path="/profile" element={<ProfilePage onBack={() => navigate(-1)} />} />
+                        {user?.role === 'admin' && <Route path="/admin" element={<AdminPage />} />}
+                    </Routes>
+                )}
             </div>
             {isSettingsOpen &&
                 <SettingsModal
@@ -413,5 +395,11 @@ const App: React.FC = () => {
         </div>
     );
 };
+
+const App: React.FC = () => (
+    <Router>
+        <AppContent />
+    </Router>
+);
 
 export default App;

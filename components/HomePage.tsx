@@ -33,10 +33,13 @@ const HomePage: React.FC<HomePageProps> = ({ onViewChange, user, onNavigateToDet
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
-      login('email', email);
+    if (email && password) {
+      const result = await login('email', email, password);
+      if (!result?.success) {
+        alert(result?.message || 'Login failed. Please check your credentials.');
+      }
     }
   };
 

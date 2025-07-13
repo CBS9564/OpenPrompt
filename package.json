@@ -9,11 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.9.0",
+    "@types/react-router-dom": "^5.3.3",
+    "jwt-decode": "^4.0.0",
+    "pdfjs-dist": "^5.3.93",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "@google/genai": "^1.9.0",
-    "sql.js": "1.10.3",
-    "pdfjs-dist": "^5.3.93"
+    "react-router-dom": "^7.6.3",
+    "sql.js": "1.10.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

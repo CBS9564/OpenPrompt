@@ -1,17 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { User, AuthContextType } from '../types';
-
-// This is a simple JWT decoder. In a real app, you would not need to
-// decode tokens on the client for auth purposes, but here it's for
-// getting profile info.
-function decodeJwt(token: string) {
-    try {
-        return JSON.parse(atob(token.split('.')[1]));
-    } catch (e) {
-        console.error("Failed to decode JWT", e);
-        return null;
-    }
-}
+import { jwtDecode } from 'jwt-decode';
+import * as db from '../services/dbService';
 
 // Augment the window interface
 declare global {
@@ -44,56 +34,72 @@ const saveProfileToStorage = (email: string, profileData: Partial<User>) => {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   const GOOGLE_CLIENT_ID = useMemo(() => {
-    // Safely access process.env only inside the component lifecycle to avoid startup crashes.
     if (typeof process !== 'undefined' && typeof process.env !== 'undefined') {
         return process.env.GOOGLE_CLIENT_ID;
     }
     return undefined;
   }, []);
 
-  const loginUser = (baseUser: Omit<User, 'bio' | 'website' | 'github'>) => {
-    const storedProfile = getProfileFromStorage(baseUser.email);
+  const processLogin = (token: string, userData: User) => {
+    localStorage.setItem('jwt_token', token);
+    const storedProfile = getProfileFromStorage(userData.email);
     const finalUser: User = {
-        ...baseUser,
+        ...userData,
         ...storedProfile,
-        // Custom avatar/name from profile should override default one
-        avatarUrl: storedProfile.avatarUrl || baseUser.avatarUrl,
-        name: storedProfile.name || baseUser.name,
+        avatarUrl: storedProfile.avatarUrl || userData.avatarUrl,
+        name: storedProfile.name || userData.name,
     };
-    
-    // Save the merged profile back to storage, ensuring initial data from provider is saved if no profile exists
     saveProfileToStorage(finalUser.email, { name: finalUser.name, avatarUrl: finalUser.avatarUrl, ...storedProfile });
     setUser(finalUser);
+    setToken(token);
   };
 
   const handleGoogleLogin = (response: any) => {
-    const userData = decodeJwt(response.credential);
+    const userData = jwtDecode(response.credential);
+    // This part would ideally call your backend's Google auth endpoint
+    // For now, we'll mock it or assume the JWT from Google is enough for client-side user info
     if (userData) {
-      const baseUser = {
-        name: userData.name,
+      const mockUser: User = {
+        id: userData.sub || `google-${userData.email}`,
+        name: userData.name || userData.email,
         email: userData.email,
         avatarUrl: userData.picture,
+        role: 'user',
       };
-      loginUser(baseUser);
+      // In a real app, you'd send response.credential to your backend
+      // and your backend would return its own JWT after verifying.
+      // For now, we'll just use a mock token or the Google token directly.
+      processLogin(response.credential, mockUser);
     }
   };
 
-  const createMockUserFromEmail = (email: string) => {
-    const name = email.split('@')[0]
-      .replace(/[\.\_]/g, ' ')
-      .replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-    
-    const baseUser = {
-      name: name,
-      email: email,
-      avatarUrl: `https://api.dicebear.com/8.x/lorelei/svg?seed=${encodeURIComponent(email)}`
-    };
-    loginUser(baseUser);
-  };
-
   useEffect(() => {
+    const storedToken = localStorage.getItem('jwt_token');
+    if (storedToken) {
+      try {
+        const decoded: any = jwtDecode(storedToken);
+        // Check if token is expired
+        if (decoded.exp * 1000 > Date.now()) {
+          const mockUser: User = {
+            id: decoded.id,
+            email: decoded.email,
+            name: decoded.name || decoded.email,
+            avatarUrl: decoded.avatarUrl,
+            role: decoded.role || 'user',
+          };
+          processLogin(storedToken, mockUser);
+        } else {
+          localStorage.removeItem('jwt_token');
+        }
+      } catch (e) {
+        console.error("Failed to decode or validate stored JWT", e);
+        localStorage.removeItem('jwt_token');
+      }
+    }
+
     if (GOOGLE_CLIENT_ID) {
         window.google?.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
@@ -104,27 +110,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [GOOGLE_CLIENT_ID]);
 
-  const login = (provider: 'email' | 'google' | 'github', email?: string) => {
+  const login = async (provider: 'email' | 'google' | 'github', email?: string, password?: string) => {
     switch (provider) {
         case 'google':
             if (GOOGLE_CLIENT_ID) {
                 window.google?.accounts.id.prompt();
             } else {
                 console.warn('Google Client ID not found. Using mock Google user.');
-                loginUser({ name: 'Google User', email: 'mock@google.com', avatarUrl: `https://api.dicebear.com/8.x/bottts/svg?seed=google` });
+                const mockUser: User = { id: 'mock-google', name: 'Google User', email: 'mock@google.com', avatarUrl: `https://api.dicebear.com/8.x/bottts/svg?seed=google`, role: 'user' };
+                processLogin('mock_google_token', mockUser);
             }
             break;
         case 'github':
             // Mock GitHub login
-            loginUser({ name: 'GitHub User', email: 'mock@github.com', avatarUrl: `https://api.dicebear.com/8.x/bottts/svg?seed=github` });
+            const mockUser: User = { id: 'mock-github', name: 'GitHub User', email: 'mock@github.com', avatarUrl: `https://api.dicebear.com/8.x/bottts/svg?seed=github`, role: 'user' };
+            processLogin('mock_github_token', mockUser);
             break;
         case 'email':
-            if (email) {
-                createMockUserFromEmail(email);
+            if (email && password) {
+                try {
+                    const response = await db.loginUser(email, password);
+                    if (response.data && response.data.token && response.data.user) {
+                        processLogin(response.data.token, response.data.user);
+                        return { success: true };
+                    } else {
+                        return { success: false, message: response.error || 'Login failed' };
+                    }
+                } catch (error: any) {
+                    return { success: false, message: error.message || 'Login failed' };
+                }
+            } else {
+                return { success: false, message: 'Email and password are required for email login.' };
             }
-            break;
         default:
-            break;
+            return { success: false, message: 'Unsupported login provider.' };
     }
   };
 
@@ -132,7 +151,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (GOOGLE_CLIENT_ID) {
         window.google?.accounts.id.disableAutoSelect();
     }
+    localStorage.removeItem('jwt_token');
     setUser(null);
+    setToken(null);
+    // Redirect to home page after logout
+    window.location.href = '/';
   };
   
   const updateUserProfile = (newProfileData: Partial<User>) => {
@@ -152,7 +175,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );
