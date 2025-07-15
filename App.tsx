@@ -103,7 +103,18 @@ const AppContent: React.FC = () => {
     const handleViewChange = (newView: View) => {
         setSelectedDetailItem(null);
         setSearchQuery('');
-        navigate(newView);
+        // Use string literals for navigation to ensure correct routes
+        if (newView === View.MY_PROMPTS) {
+            navigate('/my-prompts');
+        } else if (newView === View.MY_AGENTS) {
+            navigate('/my-agents');
+        } else if (newView === View.MY_PERSONAS) {
+            navigate('/my-personas');
+        } else if (newView === View.MY_CONTEXTS) {
+            navigate('/my-contexts');
+        } else {
+            navigate(newView);
+        }
     };
 
     const handleNavigateToDetail = async (id: string, type: 'prompt' | 'agent' | 'persona') => {
@@ -146,7 +157,7 @@ const AppContent: React.FC = () => {
         };
 
         try {
-            let response;
+            let response = null;
             switch(item.type) {
                 case 'prompt':
                     response = await db.addPrompt({ ...baseItem, text: item.content, category: item.category || 'General', supportedInputs: [] }, item.attachments, token);
@@ -161,26 +172,48 @@ const AppContent: React.FC = () => {
                     response = await db.addContext({ ...baseItem, content: item.content }, token);
                     break;
             }
+
+            if (response?.error) {
+                alert(`Failed to publish ${item.type}: ${response.error}`);
+                console.error(`Failed to publish ${item.type}:`, response.error);
+                return;
+            }
+
+            console.log("API Response for publish:", response); // Added for debugging
+
             if (response?.data?.id) {
                 console.log(`${item.type} added with ID:`, response.data.id);
+                await loadAllData(token);
+                if (item.type === 'prompt' || item.type === 'agent' || item.type === 'persona') {
+                    handleNavigateToDetail(response.data.id, item.type);
+                } else {
+                    handleViewChange(View.HOME);
+                }
             } else {
-                console.warn(`No ID returned for ${item.type} creation.`);
+                console.warn(`No ID returned for ${item.type} creation, or creation failed silently.`);
             }
-            await loadAllData(token);
-            handleViewChange(View.HOME);
-        } catch (error) {
-            console.error("Failed to publish item:", error);
+        } catch (error: any) {
+            console.error("Failed to publish item:", error.message || error);
+            alert(`Failed to publish ${item.type}: ${error.message || "Unknown error"}`);
         }
     };
 
     const handleUpdateItem = async (item: PlaygroundItem) => {
         if (!token) return; // Require token for update
         try {
+            let response = null;
             switch(item.type) {
-                case 'prompt': await db.updatePrompt(item, token); break;
-                case 'agent': await db.updateAgent(item, token); break;
-                case 'persona': await db.updatePersona(item, token); break;
+                case 'prompt': response = await db.updatePrompt(item, token); break;
+                case 'agent': response = await db.updateAgent(item, token); break;
+                case 'persona': response = await db.updatePersona(item, token); break;
             }
+
+            if (response?.error) {
+                alert(`Failed to update ${item.type}: ${response.error}`);
+                console.error(`Failed to update ${item.type}:`, response.error);
+                return;
+            }
+
             await loadAllData(token);
             setSelectedDetailItem(item); // Keep viewing the updated item
         } catch (error) {
@@ -192,11 +225,19 @@ const AppContent: React.FC = () => {
         if (!token) return; // Require token for delete
         if (!window.confirm(`Are you sure you want to delete "${item.title}"?`)) return;
         try {
+            let response = null;
             switch(item.type) {
-                case 'prompt': await db.deletePrompt(item.id, token); break;
-                case 'agent': await db.deleteAgent(item.id, token); break;
-                case 'persona': await db.deletePersona(item.id, token); break;
+                case 'prompt': response = await db.deletePrompt(item.id, token); break;
+                case 'agent': response = await db.deleteAgent(item.id, token); break;
+                case 'persona': response = await db.deletePersona(item.id, token); break;
             }
+
+            if (response?.error) {
+                alert(`Failed to delete ${item.type}: ${response.error}`);
+                console.error(`Failed to delete ${item.type}:`, response.error);
+                return;
+            }
+
             await loadAllData(token);
             setSelectedDetailItem(null);
         } catch (error) {
@@ -234,11 +275,19 @@ const AppContent: React.FC = () => {
     const handleToggleLike = async (itemId: string, isCurrentlyLiked: boolean) => {
         if (!user || !token) return; // Require user and token for like
         try {
+            let response = null;
             if (isCurrentlyLiked) {
-                await db.removeLike(itemId, user.email, token);
+                response = await db.removeLike(itemId, user.email, token);
             } else {
-                await db.addLike(itemId, user.email, token);
+                response = await db.addLike(itemId, user.email, token);
             }
+
+            if (response?.error) {
+                alert(`Failed to toggle like: ${response.error}`);
+                console.error(`Failed to toggle like:`, response.error);
+                return;
+            }
+
             setIsLiked(!isCurrentlyLiked);
             await loadAllData(token);
 
@@ -284,7 +333,12 @@ const AppContent: React.FC = () => {
             createdAt: Date.now(),
         };
         try {
-            await db.addComment(newComment, token);
+            const response = await db.addComment(newComment, token);
+            if (response?.error) {
+                alert(`Failed to add comment: ${response.error}`);
+                console.error(`Failed to add comment:`, response.error);
+                return;
+            }
             setComments(await db.getCommentsForItem(itemId, token));
             await loadAllData(token);
         } catch (error) {
@@ -339,7 +393,7 @@ const AppContent: React.FC = () => {
                     multimodalFilter={multimodalFilter} onMultimodalFilterChange={setMultimodalFilter}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredItems.map((item: any) => React.createElement(cardComponent, { key: item.id, [itemType]: item, onSelect: () => handleNavigateToDetail(item.id, itemType), showVisibility: isMyLibrary }))}
+                    {filteredItems.map((item: any, index: number) => React.createElement(cardComponent, { key: item.id || `${item.title}-${index}`, [itemType]: item, onSelect: () => handleNavigateToDetail(item.id, itemType), showVisibility: isMyLibrary }))}
                 </div>
             </main>
         );
@@ -377,6 +431,7 @@ const AppContent: React.FC = () => {
                         <Route path="/my-agents" element={renderListPage("My Agents", "Your personal collection of agents.", agents, AgentCard, 'agent', true)} />
                         <Route path="/personas" element={renderListPage("Community Personas", "Explore fun and interesting AI personas for roleplaying.", personas, PersonaCard, 'persona', false)} />
                         <Route path="/my-personas" element={renderListPage("My Personas", "Your personal collection of personas.", personas, PersonaCard, 'persona', true)} />
+                        <Route path="/my-contexts" element={renderListPage("My Contexts", "Your personal collection of contexts.", contexts, ContextCard, 'context', true)} />
                         <Route path="/create" element={<CreationPage onPublish={handlePublish} onCancel={() => navigate('/')} apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} />} />
                         <Route path="/profile" element={<ProfilePage onBack={() => navigate(-1)} />} />
                         {user?.role === 'admin' && <Route path="/admin" element={<AdminPage />} />}

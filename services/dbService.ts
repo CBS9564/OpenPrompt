@@ -61,27 +61,15 @@ export const getPromptById = async (id: string, token: string): Promise<Prompt |
 };
 
 export const addPrompt = async (prompt: Prompt, attachments: Omit<Attachment, 'id' | 'itemId'>[] = [], token: string) => {
-    const { error } = await fetchApi('/prompts', 'POST', { ...prompt, attachments }, token);
-    if (error) {
-        console.error("Error adding prompt:", error);
-        throw new Error(error);
-    }
+    return fetchApi('/prompts', 'POST', { ...prompt, attachments }, token);
 };
 
 export const updatePrompt = async (prompt: Prompt, token: string) => {
-    const { error } = await fetchApi(`/prompts/${prompt.id}`, 'PUT', prompt, token);
-    if (error) {
-        console.error("Error updating prompt:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/prompts/${prompt.id}`, 'PUT', prompt, token);
 };
 
 export const deletePrompt = async (id: string, token: string) => {
-    const { error } = await fetchApi(`/prompts/${id}`, 'DELETE', undefined, token);
-    if (error) {
-        console.error("Error deleting prompt:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/prompts/${id}`, 'DELETE', undefined, token);
 };
 
 // Agents
@@ -104,27 +92,15 @@ export const getAgentById = async (id: string, token: string): Promise<Agent | n
 };
 
 export const addAgent = async (agent: Agent, attachments: Omit<Attachment, 'id' | 'itemId'>[] = [], token: string) => {
-    const { error } = await fetchApi('/agents', 'POST', { ...agent, attachments }, token);
-    if (error) {
-        console.error("Error adding agent:", error);
-        throw new Error(error);
-    }
+    return fetchApi('/agents', 'POST', { ...agent, attachments }, token);
 };
 
 export const updateAgent = async (agent: Agent, token: string) => {
-    const { error } = await fetchApi(`/agents/${agent.id}`, 'PUT', agent, token);
-    if (error) {
-        console.error("Error updating agent:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/agents/${agent.id}`, 'PUT', agent, token);
 };
 
 export const deleteAgent = async (id: string, token: string) => {
-    const { error } = await fetchApi(`/agents/${id}`, 'DELETE', undefined, token);
-    if (error) {
-        console.error("Error deleting agent:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/agents/${id}`, 'DELETE', undefined, token);
 };
 
 // Personas
@@ -147,27 +123,15 @@ export const getPersonaById = async (id: string, token: string): Promise<Persona
 };
 
 export const addPersona = async (persona: Persona, attachments: Omit<Attachment, 'id' | 'itemId'>[] = [], token: string) => {
-    const { error } = await fetchApi('/personas', 'POST', { ...persona, attachments }, token);
-    if (error) {
-        console.error("Error adding persona:", error);
-        throw new Error(error);
-    }
+    return fetchApi('/personas', 'POST', { ...persona, attachments }, token);
 };
 
 export const updatePersona = async (persona: Persona, token: string) => {
-    const { error } = await fetchApi(`/personas/${persona.id}`, 'PUT', persona, token);
-    if (error) {
-        console.error("Error updating persona:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/personas/${persona.id}`, 'PUT', persona, token);
 };
 
 export const deletePersona = async (id: string, token: string) => {
-    const { error } = await fetchApi(`/personas/${id}`, 'DELETE', undefined, token);
-    if (error) {
-        console.error("Error deleting persona:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/personas/${id}`, 'DELETE', undefined, token);
 };
 
 // Contexts
@@ -181,12 +145,7 @@ export const getContexts = async (token: string): Promise<ContextItem[]> => {
 };
 
 export const addContext = async (context: ContextItem, token: string) => {
-    const { data, error } = await fetchApi('/contexts', 'POST', context, token);
-    if (error) {
-        console.error("Error adding context:", error);
-        throw new Error(error);
-    }
-    return { data };
+    return fetchApi('/contexts', 'POST', context, token);
 };
 
 // Social Features
@@ -209,27 +168,15 @@ export const hasUserLikedItem = async (itemId: string, userId: string, token: st
 };
 
 export const addLike = async (itemId: string, userId: string, token: string) => {
-    const { error } = await fetchApi('/likes', 'POST', { itemId, userId }, token);
-    if (error) {
-        console.error("Error adding like:", error);
-        throw new Error(error);
-    }
+    return fetchApi('/likes', 'POST', { itemId, userId }, token);
 };
 
 export const removeLike = async (itemId: string, userId: string, token: string) => {
-    const { error } = await fetchApi('/likes', 'DELETE', { itemId, userId }, token);
-    if (error) {
-        console.error("Error removing like:", error);
-        throw new Error(error);
-    }
+    return fetchApi('/likes', 'DELETE', { itemId, userId }, token);
 };
 
 export const addComment = async (comment: Comment, token: string) => {
-    const { error } = await fetchApi('/comments', 'POST', comment, token);
-    if (error) {
-        console.error("Error adding comment:", error);
-        throw new Error(error);
-    }
+    return fetchApi('/comments', 'POST', comment, token);
 };
 
 // Auth
@@ -252,19 +199,11 @@ export const getUsers = async (token: string): Promise<User[]> => {
 };
 
 export const deleteUser = async (id: string, token: string) => {
-    const { error } = await fetchApi(`/admin/users/${id}`, 'DELETE', undefined, token);
-    if (error) {
-        console.error("Error deleting user:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/admin/users/${id}`, 'DELETE', undefined, token);
 };
 
 export const updateUser = async (user: User, token: string) => {
-    const { error } = await fetchApi(`/admin/users/${user.id}`, 'PUT', user, token);
-    if (error) {
-        console.error("Error updating user:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/admin/users/${user.id}`, 'PUT', user, token);
 };
 
 export const getAdminComments = async (token: string): Promise<Comment[]> => {
@@ -277,11 +216,7 @@ export const getAdminComments = async (token: string): Promise<Comment[]> => {
 };
 
 export const deleteAdminComment = async (id: string, token: string) => {
-    const { error } = await fetchApi(`/admin/comments/${id}`, 'DELETE', undefined, token);
-    if (error) {
-        console.error("Error deleting admin comment:", error);
-        throw new Error(error);
-    }
+    return fetchApi(`/admin/comments/${id}`, 'DELETE', undefined, token);
 };
 
 

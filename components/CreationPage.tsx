@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { PublishableItem, ApiKeys, LLMProvider, Attachment } from '../types';
+import { v4 as uuidv4 } from 'uuid';
+import { PublishableItem, ApiKeys, LLMProvider, Attachment } from '../types.ts';
 import { BookOpenIcon } from './icons/BookOpenIcon';
 import { CpuChipIcon } from './icons/CpuChipIcon';
 import { UsersIcon } from './icons/UsersIcon';
@@ -176,9 +177,15 @@ Generated System Instruction:`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid || (creationType !== 'context' && !user)) return;
+    console.log("handleSubmit called!"); // Added for debugging
+    if (!isFormValid || (creationType !== 'context' && !user)) {
+      console.log("Form is not valid or user not logged in for non-context type."); // Added for debugging
+      return;
+    }
 
+    const newId = uuidv4();
     onPublish({
+      id: newId,
       type: creationType,
       title,
       description,
@@ -371,7 +378,7 @@ Generated System Instruction:`;
 
                 <div className="p-6 bg-background border-t border-border flex justify-end gap-4">
                     <button type="button" onClick={onCancel} className="px-5 py-2.5 bg-card border border-border text-primary font-semibold rounded-md hover:bg-card-hover transition-colors">Cancel</button>
-                    <button type="submit" disabled={!isFormValid} className="px-5 py-2.5 bg-accent text-white font-semibold rounded-md hover:bg-accent/90 transition-colors disabled:bg-card-hover disabled:text-secondary disabled:cursor-not-allowed">
+                    <button type="submit" className="px-5 py-2.5 bg-accent text-white font-semibold rounded-md hover:bg-accent/90 transition-colors disabled:bg-card-hover disabled:text-secondary disabled:cursor-not-allowed">
                         Publish {CREATION_CONFIG[creationType].label}
                     </button>
                 </div>

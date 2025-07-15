@@ -8,8 +8,9 @@ import { open } from 'sqlite';
 import path from 'path';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import readline from 'readline';
 import { setupRoutes } from './routes';
-import { COMMUNITY_PROMPTS, COMMUNITY_AGENTS, COMMUNITY_PERSONAS, COMMUNITY_CONTEXTS } from './data/communityData'; // Import community data
+import { COMMUNITY_PROMPTS, COMMUNITY_AGENTS, COMMUNITY_PERSONAS, COMMUNITY_CONTEXTS, TEST_USERS, generateTestComments } from './data/communityData'; // Import community data
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -100,6 +101,9 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   name TEXT,
   avatarUrl TEXT,
+  bio TEXT,
+  website TEXT,
+  github TEXT,
   role TEXT DEFAULT 'user'
 );
 `;
@@ -136,11 +140,9 @@ async function initializeDatabase() {
     console.log('Default admin user created.');
   }
 
-  // Seed community data based on environment variable if tables are empty
-  const seedCommunityData = process.env.SEED_COMMUNITY_DATA !== 'false'; // Default to true
+  // Seed community data if tables are empty
   const promptsCount = await db.get('SELECT COUNT(*) as count FROM prompts');
-
-  if (seedCommunityData && promptsCount.count === 0) {
+  if (promptsCount.count === 0) {
     console.log('Seeding community data...');
     for (const p of COMMUNITY_PROMPTS) {
       await db.run(
@@ -167,6 +169,29 @@ async function initializeDatabase() {
       );
     }
     console.log('Community data seeded.');
+
+    // Seed test users
+    for (const user of TEST_USERS) {
+      const hashedPassword = await bcrypt.hash('password123', 10); // Default password for test users
+      await db.run(
+        'INSERT INTO users (id, email, password, name, avatarUrl, bio, website, github, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        user.id, user.email, hashedPassword, user.name, user.avatarUrl, user.bio, user.website, user.github, 'user'
+      );
+    }
+    console.log('Test users seeded.');
+
+    // Generate and seed comments
+    const allItems = [...COMMUNITY_PROMPTS, ...COMMUNITY_AGENTS, ...COMMUNITY_PERSONAS, ...COMMUNITY_CONTEXTS];
+    const allUsers = await db.all('SELECT * FROM users'); // Fetch all users including newly seeded ones
+    const testComments = generateTestComments(allItems, allUsers);
+
+    for (const comment of testComments) {
+      await db.run(
+        'INSERT INTO comments (id, itemId, userId, authorName, authorAvatar, content, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        comment.id, comment.itemId, comment.userId, comment.authorName, comment.authorAvatar, comment.content, comment.createdAt
+      );
+    }
+    console.log('Test comments seeded.');
   }
 }
 

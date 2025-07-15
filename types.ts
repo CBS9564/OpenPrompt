@@ -71,16 +71,16 @@ export type PlaygroundItem =
 
 
 export enum View {
-  HOME = 'home',
+  HOME = '/',
   PROMPTS = 'prompts',
   AGENTS = 'agents',
   PERSONAS = 'personas',
   CONTEXTS = 'contexts',
   CREATE = 'create',
-  MY_PROMPTS = 'my_prompts',
-  MY_AGENTS = 'my_agents',
-  MY_PERSONAS = 'my_personas',
-  MY_CONTEXTS = 'my_contexts',
+  MY_PROMPTS = '/my-prompts',
+  MY_AGENTS = '/my-agents',
+  MY_PERSONAS = '/my-personas',
+  MY_CONTEXTS = '/my-contexts',
   PROFILE = 'profile',
 }
 
@@ -110,6 +110,7 @@ export interface ApiKeys {
 }
 
 export interface User {
+  id: string;
   name: string;
   email: string; // This is the unique identifier
   avatarUrl?: string;

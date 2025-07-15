@@ -162,7 +162,7 @@ const HomePage: React.FC<HomePageProps> = ({ onViewChange, user, onNavigateToDet
                     </div>
 
                     <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                       <FeatureCard icon={<BoltIcon className="w-6 h-6"/>} title="Unified Playground" onClick={() => onNavigateToDetail('p1', 'prompt')}>
+                       <FeatureCard icon={<BoltIcon className="w-6 h-6"/>} title="Unified Playground" onClick={() => onNavigateToDetail('prompt-001', 'prompt')}>
                             Test prompts, agents, and personas against multiple LLM providers like Gemini and Ollama in a single, intuitive chat interface.
                         </FeatureCard>
                         <FeatureCard icon={<ImageIcon className="w-6 h-6"/>} title="Multimodal Inputs" onClick={() => onNavigateToDetail('p_cook_helper', 'prompt')}>
