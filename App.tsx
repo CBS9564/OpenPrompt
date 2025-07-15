@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { View, Prompt, Agent, Persona, ContextItem, PlaygroundItem, ApiKeys, PublishableItem, SortOrder, MultimodalFilter, User, Comment, OllamaCredentials } from './types';
+import { View, Prompt, Agent, Persona, ContextItem, PlaygroundItem, ApiKeys, PublishableItem, SortOrder, MultimodalFilter, User, Comment, OllamaCredentials, LLMProvider } from './types';
 import { useAuth } from './contexts/AuthContext';
 import * as db from './services/dbService';
 import { fetchOllamaModels as fetchOllamaModelsService } from './services/llmService';
@@ -36,6 +36,8 @@ const AppContent: React.FC = () => {
     const [apiKeys, setApiKeys] = useState<ApiKeys>({});
     const [fetchedOllamaModels, setFetchedOllamaModels] = useState<string[]>([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [selectedLLMProvider, setSelectedLLMProvider] = useState<LLMProvider>(LLMProvider.GEMINI);
+    const [selectedLLMModel, setSelectedLLMModel] = useState<string | null>(null);
     
     // Comments & Likes state for DetailPage
     const [comments, setComments] = useState<Comment[]>([]);
@@ -56,6 +58,15 @@ const AppContent: React.FC = () => {
                 const savedKeys = localStorage.getItem('openprompt_apikeys');
                 if (savedKeys) {
                     setApiKeys(JSON.parse(savedKeys));
+                }
+                // Load LLM preferences
+                const savedProvider = localStorage.getItem('openprompt_llm_provider');
+                if (savedProvider) {
+                    setSelectedLLMProvider(savedProvider as LLMProvider);
+                }
+                const savedModel = localStorage.getItem('openprompt_llm_model');
+                if (savedModel) {
+                    setSelectedLLMModel(savedModel);
                 }
             } catch (error) {
                 console.error("Failed to initialize the database:", error);
@@ -118,7 +129,11 @@ const AppContent: React.FC = () => {
     };
 
     const handleNavigateToDetail = async (id: string, type: 'prompt' | 'agent' | 'persona') => {
-        if (!token) return; // Require token for detail view
+        console.log("handleNavigateToDetail called with ID:", id, "Type:", type);
+        if (!token) {
+            console.log("No token available. Cannot navigate to detail.");
+            return; // Require token for detail view
+        }
         let item: PlaygroundItem | null = null;
         try {
             switch(type) {
@@ -136,7 +151,10 @@ const AppContent: React.FC = () => {
                     break;
             }
             if (item) {
+                console.log("Successfully fetched item:", item);
                 setSelectedDetailItem(item);
+            } else {
+                console.log("Item not found or failed to fetch for ID:", id, "Type:", type);
             }
         } catch (error) {
             console.error("Failed to navigate to detail:", error);
@@ -253,6 +271,13 @@ const AppContent: React.FC = () => {
         if (keys.ollama?.baseUrl !== apiKeys.ollama?.baseUrl) {
              handleFetchOllamaModels(keys.ollama);
         }
+    };
+
+    const handleSaveLLMSettings = (provider: LLMProvider, model: string) => {
+        setSelectedLLMProvider(provider);
+        setSelectedLLMModel(model);
+        localStorage.setItem('openprompt_llm_provider', provider);
+        localStorage.setItem('openprompt_llm_model', model);
     };
 
     const handleFetchOllamaModels = async (ollamaCreds: OllamaCredentials | undefined) => {
@@ -421,6 +446,9 @@ const AppContent: React.FC = () => {
                         isLiked={isLiked}
                         onToggleLike={handleToggleLike}
                         onAddComment={handleAddComment}
+                        selectedLLMProvider={selectedLLMProvider}
+                        selectedLLMModel={selectedLLMModel}
+                        onSaveLLMSettings={handleSaveLLMSettings}
                     />
                 ) : (
                     <Routes>
@@ -445,6 +473,9 @@ const AppContent: React.FC = () => {
                     onSave={handleSaveSettings}
                     fetchedOllamaModels={fetchedOllamaModels}
                     onFetchOllamaModels={() => handleFetchOllamaModels(apiKeys.ollama)}
+                    selectedLLMProvider={selectedLLMProvider}
+                    selectedLLMModel={selectedLLMModel}
+                    onSaveLLMSettings={handleSaveLLMSettings}
                 />
             }
         </div>

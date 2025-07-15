@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong secret in production
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 let db: any;
 
@@ -140,10 +140,22 @@ async function initializeDatabase() {
     console.log('Default admin user created.');
   }
 
-  // Seed community data if tables are empty
   const promptsCount = await db.get('SELECT COUNT(*) as count FROM prompts');
   if (promptsCount.count === 0) {
-    console.log('Seeding community data...');
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    const answer = await new Promise<string>(resolve => {
+      rl.question('Database is empty. Do you want to seed test data? (y/n): ', input => {
+        rl.close();
+        resolve(input.toLowerCase());
+      });
+    });
+
+    if (answer === 'y') {
+      console.log('Seeding community data...');
     for (const p of COMMUNITY_PROMPTS) {
       await db.run(
         'INSERT INTO prompts (id, title, description, tags, text, category, author, isRecommended, createdAt, isPublic, supportedInputs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -192,6 +204,7 @@ async function initializeDatabase() {
       );
     }
     console.log('Test comments seeded.');
+    }
   }
 }
 

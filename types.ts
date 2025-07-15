@@ -151,18 +151,14 @@ export interface Comment {
     createdAt: number;
 }
 
-export interface DetailPageProps {
-  item: PlaygroundItem;
-  onUpdate: (item: PlaygroundItem) => void;
-  onDelete: (item: PlaygroundItem) => void;
-  onBack: () => void;
+export interface PlaygroundProps {
+  selectedItem: PlaygroundItem | null;
   apiKeys: ApiKeys;
   fetchedOllamaModels: string[];
   contexts: ContextItem[];
-  comments: Comment[];
-  isLiked: boolean;
-  onToggleLike: (itemId: string, isCurrentlyLiked: boolean) => void;
-  onAddComment: (itemId: string, content: string) => void;
+  selectedLLMProvider: LLMProvider;
+  selectedLLMModel: string | null;
+  onSaveLLMSettings: (provider: LLMProvider, model: string) => void;
 }
 
 export interface HomePageProps {

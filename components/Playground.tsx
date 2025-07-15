@@ -20,11 +20,11 @@ interface PlaygroundProps {
   contexts: ContextItem[];
 }
 
-const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedOllamaModels, contexts }) => {
+const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedOllamaModels, contexts, selectedLLMProvider, selectedLLMModel, onSaveLLMSettings }) => {
+  console.log("Playground received selectedLLMProvider:", selectedLLMProvider, "selectedLLMModel:", selectedLLMModel);
   const [userInput, setUserInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'ai' | 'system', content: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<LLMProvider>(LLMProvider.GEMINI);
   const [injectedContextId, setInjectedContextId] = useState<string>('none');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -92,23 +92,21 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
   }, [apiKeys.ollama?.model, fetchedOllamaModels]);
 
   const currentProviderModels = useMemo(() => {
-      if (selectedProvider === LLMProvider.OLLAMA) {
+      if (selectedLLMProvider === LLMProvider.OLLAMA) {
           return ollamaModels;
       }
-      return AVAILABLE_MODELS[selectedProvider] || [];
-  }, [selectedProvider, ollamaModels]);
+      return AVAILABLE_MODELS[selectedLLMProvider] || [];
+  }, [selectedLLMProvider, ollamaModels]);
   
-  const [selectedModel, setSelectedModel] = useState(currentProviderModels[0]);
-
   useEffect(() => {
-      if (selectedProvider === LLMProvider.OLLAMA && apiKeys.ollama?.model) {
-          setSelectedModel(apiKeys.ollama.model);
-      } else if (!currentProviderModels.includes(selectedModel)) {
-          setSelectedModel(currentProviderModels[0]);
-      } else if (currentProviderModels.length > 0 && !selectedModel) {
-          setSelectedModel(currentProviderModels[0]);
+      if (selectedLLMProvider === LLMProvider.OLLAMA && apiKeys.ollama?.model) {
+          onSaveLLMSettings(selectedLLMProvider, apiKeys.ollama.model);
+      } else if (!currentProviderModels.includes(selectedLLMModel || '')) {
+          onSaveLLMSettings(selectedLLMProvider, currentProviderModels[0]);
+      } else if (currentProviderModels.length > 0 && !selectedLLMModel) {
+          onSaveLLMSettings(selectedLLMProvider, currentProviderModels[0]);
       }
-  }, [selectedProvider, currentProviderModels, apiKeys.ollama?.model, selectedModel]);
+  }, [selectedLLMProvider, currentProviderModels, apiKeys.ollama?.model, selectedLLMModel, onSaveLLMSettings]);
 
   const isSystemItem = (item: PlaygroundItem): item is (Agent & { type: 'agent' }) | (Persona & { type: 'persona' }) => {
     return item.type === 'agent' || item.type === 'persona';
@@ -239,8 +237,8 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
     try {
         const stream = generateContentStream({ 
             apiKeys, 
-            provider: selectedProvider, 
-            model: selectedModel, 
+            provider: selectedLLMProvider, 
+            model: selectedLLMModel, 
             prompt: finalPrompt, 
             agent, 
             image: attachedImage 
@@ -273,7 +271,7 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
             setFinalPromptText(null);
         }
     }
-  }, [selectedItem, userInput, apiKeys, selectedProvider, selectedModel, injectedContextId, contexts, attachedImage, isFillingVariables, promptVariables, currentVariableIndex, variableValues, finalPromptText, isLoading, messages]);
+  }, [selectedItem, userInput, apiKeys, selectedLLMProvider, selectedLLMModel, injectedContextId, contexts, attachedImage, isFillingVariables, promptVariables, currentVariableIndex, variableValues, finalPromptText, isLoading, messages]);
   
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -330,10 +328,10 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
             </p>
           </div>
           <div className="flex flex-col gap-2 w-48">
-            <select value={selectedProvider} onChange={(e) => setSelectedProvider(e.target.value as LLMProvider)} className={selectClasses} aria-label="Select Provider">
+            <select value={selectedLLMProvider} onChange={(e) => onSaveLLMSettings(e.target.value as LLMProvider, null)} className={selectClasses} aria-label="Select Provider">
               {Object.values(LLMProvider).map(provider => <option key={provider} value={provider}>{provider}</option>)}
             </select>
-            <select value={selectedModel || ''} onChange={(e) => setSelectedModel(e.target.value)} className={`${selectClasses} normal-case`} aria-label="Select Model" disabled={currentProviderModels.length === 0}>
+            <select value={selectedLLMModel || ''} onChange={(e) => onSaveLLMSettings(selectedLLMProvider, e.target.value)} className={`${selectClasses} normal-case`} aria-label="Select Model" disabled={currentProviderModels.length === 0}>
               {currentProviderModels.map(model => <option key={model} value={model}>{model}</option>)}
             </select>
           </div>

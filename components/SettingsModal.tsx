@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ApiKeys, LLMProvider } from '../types';
+import { AVAILABLE_MODELS } from '../constants';
 import { OllamaIcon } from './icons/OllamaIcon';
 import { CpuChipIcon } from './icons/CpuChipIcon';
 import { GeminiIcon } from './icons/GeminiIcon';
@@ -21,13 +22,18 @@ interface SettingsModalProps {
   onSave: (apiKeys: ApiKeys) => void;
   onFetchOllamaModels: () => Promise<{ success: boolean; message: string; models?: string[] }>;
   fetchedOllamaModels: string[];
+  selectedLLMProvider: LLMProvider;
+  selectedLLMModel: string | null;
+  onSaveLLMSettings: (provider: LLMProvider, model: string | null) => void;
 }
 
 type SettingsTab = 'gemini' | 'anthropic' | 'groq' | 'ollama' | 'huggingface' | 'openai' | 'elevenlabs' | 'stabilityai' | 'runwayml';
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, onClose, onSave, onFetchOllamaModels, fetchedOllamaModels }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, onClose, onSave, onFetchOllamaModels, fetchedOllamaModels, selectedLLMProvider: initialLLMProvider, selectedLLMModel: initialLLMModel, onSaveLLMSettings }) => {
   const [localApiKeys, setLocalApiKeys] = useState<ApiKeys>(initialApiKeys);
   const [activeTab, setActiveTab] = useState<SettingsTab>('gemini');
+  const [localSelectedLLMProvider, setLocalSelectedLLMProvider] = useState<LLMProvider>(initialLLMProvider);
+  const [localSelectedLLMModel, setLocalSelectedLLMModel] = useState<string | null>(initialLLMModel);
 
   // Ollama specific state
   const [fetchStatus, setFetchStatus] = useState<{ loading: boolean; message: string | null; success: boolean; }>({ loading: false, message: null, success: false });
@@ -37,6 +43,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(localApiKeys);
+    onSaveLLMSettings(localSelectedLLMProvider, localSelectedLLMModel);
   };
   
   const handleSimpleKeyChange = (provider: 'gemini' | 'anthropic' | 'groq' | 'openai' | 'elevenlabs' | 'huggingface' | 'stabilityai' | 'runwayml', value: string) => {
@@ -85,6 +92,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, 
       )
   }
   
+  const selectClasses = "w-full p-2 bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-primary capitalize";
+
   const ApiKeyInput: React.FC<{
       provider: 'gemini' | 'anthropic' | 'groq' | 'openai' | 'elevenlabs' | 'huggingface' | 'stabilityai' | 'runwayml',
       title: string,
@@ -219,6 +228,37 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, 
             <div className="flex">
                 <nav className="w-1/3 p-4 border-r border-border space-y-4">
                     <div>
+                        <h3 className="px-3 text-xs font-semibold text-secondary uppercase tracking-wider mb-2">Default LLM Settings</h3>
+                        <div className="space-y-1">
+                            <label htmlFor="llm-provider-select" className="block text-sm font-medium text-primary mb-2">Default LLM Provider</label>
+                            <select
+                                id="llm-provider-select"
+                                value={localSelectedLLMProvider}
+                                onChange={(e) => setLocalSelectedLLMProvider(e.target.value as LLMProvider)}
+                                className={selectClasses}
+                            >
+                                {Object.values(LLMProvider).map(provider => (
+                                    <option key={provider} value={provider}>{provider}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1 mt-4">
+                            <label htmlFor="llm-model-select" className="block text-sm font-medium text-primary mb-2">Default LLM Model</label>
+                            <select
+                                id="llm-model-select"
+                                value={localSelectedLLMModel || ''}
+                                onChange={(e) => setLocalSelectedLLMModel(e.target.value || null)}
+                                className={selectClasses}
+                                disabled={localSelectedLLMProvider === LLMProvider.OLLAMA && availableOllamaModels.length === 0}
+                            >
+                                <option value="">-- Select a Model --</option>
+                                {(localSelectedLLMProvider === LLMProvider.OLLAMA ? availableOllamaModels : AVAILABLE_MODELS[localSelectedLLMProvider] || []).map(model => (
+                                    <option key={model} value={model}>{model}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
                         <h3 className="px-3 text-xs font-semibold text-secondary uppercase tracking-wider mb-2">Text Models</h3>
                          <div className="space-y-1">
                             <TabButton tab="gemini" label="Gemini" icon={<GeminiIcon className="w-5 h-5" />} />
@@ -258,3 +298,4 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, 
 };
 
 export default SettingsModal;
+

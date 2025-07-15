@@ -16,7 +16,8 @@ import { CsvIcon } from './icons/CsvIcon';
 
 const DetailPage: React.FC<DetailPageProps> = ({
     item, onUpdate, onDelete, onBack, apiKeys,
-    fetchedOllamaModels, contexts, comments, isLiked, onToggleLike, onAddComment
+    fetchedOllamaModels, contexts, comments, isLiked, onToggleLike, onAddComment,
+    selectedLLMProvider, selectedLLMModel, onSaveLLMSettings
 }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -328,7 +329,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             )}
         </main>
         <aside className="w-full lg:w-1/2 h-full flex-shrink-0 bg-content border-l border-border">
-            <Playground selectedItem={item} apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} contexts={contexts} />
+            <Playground selectedItem={item} apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} contexts={contexts} selectedLLMProvider={selectedLLMProvider} selectedLLMModel={selectedLLMModel} onSaveLLMSettings={onSaveLLMSettings} />
         </aside>
     </div>
   );

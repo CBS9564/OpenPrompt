@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { Database } from 'sqlite';
 import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
