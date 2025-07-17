@@ -123,15 +123,29 @@ OpenPrompt now operates with a client-server architecture:
 - **Data Persistence:** The backend manages a SQLite database, ensuring secure, scalable, and persistent storage of all application data.
 - **LLM Communication:** The frontend communicates with the backend, which then forwards requests to the respective LLM provider's endpoints (e.g., Google AI, or your local Ollama instance). This centralizes API key management and allows for future enhancements like rate limiting and logging.
 
+## Modifications Récentes
+
+Voici un résumé des améliorations et corrections apportées depuis la version précédente :
+
+-   **Intégration du Bouton A2A Manager** : Ajout d'un bouton "A2A Manager" dans le menu déroulant de l'utilisateur pour un accès rapide à l'interface de test A2A.
+-   **Test d'Agents A2A dans le Playground** :
+    -   Les cartes d'agent affichent désormais des informations spécifiques au protocole A2A (version, capacités, schémas de sécurité).
+    -   Possibilité de sélectionner un agent A2A dans le Playground et d'envoyer des requêtes à son point de terminaison A2A, affichant les réponses directement dans l'interface.
+-   **Renommage de "Contexts" en "MCPs" (Multi-Content Prompts)** :
+    -   Mise à jour complète des interfaces, composants, routes API, schéma de base de données et logique de génération de données pour refléter ce renommage.
+    -   Les routes `/contexts` et `/my-contexts` sont devenues `/mcp` et `/my-mcp`.
+-   **Amélioration des Données de Test** : Les données de test générées sont désormais plus réalistes et limitées à 10 entrées par catégorie (prompts, agents, personas, MCPs, utilisateurs) pour une meilleure gestion et pertinence.
+-   **Corrections de Bugs Divers** : Résolution de plusieurs problèmes liés aux modifications ci-dessus, incluant des erreurs 404, des erreurs de compilation et des problèmes de cliquabilité des cartes.
+
 ## Roadmap
 
-Here are some of the features planned for future releases:
+Voici quelques-unes des fonctionnalités prévues pour les prochaines versions :
 
--   **Prompt/Agent Versioning:** Add a system to save and view the history of changes made to an item.
--   **Prompt Chaining:** Build a feature to link multiple prompts or agents together to create complex workflows.
--   **Formal Evaluation Suite:** Develop a dedicated interface for testing a single prompt against a batch of inputs to evaluate its performance and consistency.
--   **Expanded Provider Support:** Implement full API support for Anthropic, Groq, Hugging Face, and other services.
--   **Theming:** Introduce a light theme and allow users to toggle between light and dark modes.
+-   **Prompt/Agent Versioning:** Ajouter un système pour sauvegarder et visualiser l'historique des modifications apportées à un élément.
+-   **Prompt Chaining:** Construire une fonctionnalité pour lier plusieurs prompts ou agents ensemble afin de créer des workflows complexes.
+-   **Formal Evaluation Suite:** Développer une interface dédiée pour tester un seul prompt contre un lot d'entrées afin d'évaluer ses performances et sa cohérence.
+-   **Expanded Provider Support:** Implémenter un support API complet pour Anthropic, Groq, Hugging Face, et d'autres services.
+-   **Theming:** Introduire un thème clair et permettre aux utilisateurs de basculer entre les modes clair et sombre.
 
 ## Contributing
 
