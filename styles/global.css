@@ -1,0 +1,28 @@
+
+:root {
+  --background-color: #121212;
+  --card-background-color: #1e1e1e;
+  --text-color: #ffffff;
+  --primary-color: #007bff;
+  --border-color: #333333;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: sans-serif;
+}
+
+.card {
+  background-color: var(--card-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
