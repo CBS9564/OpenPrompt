@@ -131,11 +131,33 @@ Voici un résumé des améliorations et corrections apportées depuis la version
 -   **Test d'Agents A2A dans le Playground** :
     -   Les cartes d'agent affichent désormais des informations spécifiques au protocole A2A (version, capacités, schémas de sécurité).
     -   Possibilité de sélectionner un agent A2A dans le Playground et d'envoyer des requêtes à son point de terminaison A2A, affichant les réponses directement dans l'interface.
--   **Renommage de "Contexts" en "MCPs" (Multi-Content Prompts)** :
-    -   Mise à jour complète des interfaces, composants, routes API, schéma de base de données et logique de génération de données pour refléter ce renommage.
-    -   Les routes `/contexts` et `/my-contexts` sont devenues `/mcp` et `/my-mcp`.
+-   **Model Context Protocol (MCP)** : Une norme ouverte qui permet aux applications d'intelligence artificielle, notamment les modèles de langage de grande taille (LLM), de se connecter de manière sécurisée et bidirectionnelle à diverses sources de données et outils externes. Dans OpenPrompt, les MCPs sont actuellement implémentés comme des sources de contexte textuel injectables dans les prompts, mais la norme est plus large.
 -   **Amélioration des Données de Test** : Les données de test générées sont désormais plus réalistes et limitées à 10 entrées par catégorie (prompts, agents, personas, MCPs, utilisateurs) pour une meilleure gestion et pertinence.
 -   **Corrections de Bugs Divers** : Résolution de plusieurs problèmes liés aux modifications ci-dessus, incluant des erreurs 404, des erreurs de compilation et des problèmes de cliquabilité des cartes.
+
+## Cohérence de l'implémentation MCP avec la norme
+
+La définition du Model Context Protocol (MCP) est une norme ouverte qui permet aux applications d'intelligence artificielle, notamment les modèles de langage de grande taille (LLM), de se connecter de manière sécurisée et bidirectionnelle à diverses sources de données et outils externes.
+
+Notre implémentation actuelle des "MCPs" dans OpenPrompt est une **simplification et une première étape** vers cette norme.
+
+**Cohérence :**
+
+-   **Sources de données :** Nos MCPs agissent comme des "sources de données" textuelles. Ils permettent d'injecter du contenu (texte) dans les prompts, ce qui est une forme de connexion à une source de données.
+-   **Sécurité :** Bien que nous n'ayons pas encore implémenté des mécanismes de sécurité spécifiques au protocole MCP pour ces "sources de données" (au-delà de l'authentification utilisateur générale de l'application), le concept de sécurité est reconnu et peut être étendu.
+-   **Bidirectionnel :** Actuellement, nos MCPs sont principalement unidirectionnels (injection de données dans le prompt). Cependant, la structure est là pour permettre des interactions plus complexes à l'avenir.
+-   **Outils externes :** L'idée d'intégrer des "outils externes" est représentée par la possibilité d'attacher des fichiers (PDF, CSV, etc.) et des URLs, qui peuvent être considérés comme des outils pour fournir du contexte.
+
+**Incohérence / Points à améliorer pour une conformité totale :**
+
+-   **Norme ouverte :** Notre implémentation n'est pas encore une "norme ouverte" au sens où elle ne suit pas un protocole de communication standardisé pour les MCPs (comme un protocole HTTP spécifique ou un format de données défini pour l'échange). C'est une implémentation interne.
+-   **Bidirectionnalité avancée :** La "bidirectionnalité" dans la définition du MCP implique des interactions plus complexes que la simple injection de texte. Cela pourrait inclure la capacité pour le LLM de requêter dynamiquement des données à partir d'un MCP ou d'envoyer des données à un MCP.
+-   **Outils externes :** L'intégration avec des "outils externes" pourrait être plus poussée, par exemple, en permettant aux MCPs d'exécuter des fonctions ou d'interagir avec des APIs externes.
+-   **Schéma de données :** La norme MCP pourrait définir un schéma de données plus riche pour les "sources de données" et les "outils externes" que notre simple champ `content`.
+
+**Conclusion :**
+
+Notre implémentation actuelle des MCPs est une base fonctionnelle qui permet d'injecter du contexte dans les prompts. Elle est alignée avec l'esprit général du Model Context Protocol en tant que "source de données" pour les LLM. Cependant, pour être pleinement conforme à la définition d'une "norme ouverte" et pour exploiter toutes les capacités d'un MCP, des développements futurs seraient nécessaires pour implémenter un protocole de communication plus formel et des interactions bidirectionnelles plus sophistiquées.
 
 ## Roadmap
 
