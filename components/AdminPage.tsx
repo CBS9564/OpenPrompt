@@ -120,41 +120,41 @@ const AdminPage: React.FC = () => {
     }
 
     return (
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-            <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+        <main className="flex-1 p-6 lg:p-8 overflow-y-auto bg-background text-primary">
+            <h1 className="text-3xl font-bold mb-6 text-accent">Admin Dashboard</h1>
 
-            <div className="tabs mb-4">
-                <button className={`tab tab-bordered ${activeTab === 'users' ? 'tab-active' : ''}`} onClick={() => setActiveTab('users')}>Users</button>
-                <button className={`tab tab-bordered ${activeTab === 'prompts' ? 'tab-active' : ''}`} onClick={() => setActiveTab('prompts')}>Prompts</button>
-                <button className={`tab tab-bordered ${activeTab === 'agents' ? 'tab-active' : ''}`} onClick={() => setActiveTab('agents')}>Agents</button>
-                <button className={`tab tab-bordered ${activeTab === 'personas' ? 'tab-active' : ''}`} onClick={() => setActiveTab('personas')}>Personas</button>
-                <button className={`tab tab-bordered ${activeTab === 'comments' ? 'tab-active' : ''}`} onClick={() => setActiveTab('comments')}>Comments</button>
+            <div className="flex border-b border-border mb-6">
+                <button className={`py-2 px-4 text-lg font-medium ${activeTab === 'users' ? 'border-b-2 border-accent text-accent' : 'text-secondary hover:text-primary'}`} onClick={() => setActiveTab('users')}>Users</button>
+                <button className={`py-2 px-4 text-lg font-medium ${activeTab === 'prompts' ? 'border-b-2 border-accent text-accent' : 'text-secondary hover:text-primary'}`} onClick={() => setActiveTab('prompts')}>Prompts</button>
+                <button className={`py-2 px-4 text-lg font-medium ${activeTab === 'agents' ? 'border-b-2 border-accent text-accent' : 'text-secondary hover:text-primary'}`} onClick={() => setActiveTab('agents')}>Agents</button>
+                <button className={`py-2 px-4 text-lg font-medium ${activeTab === 'personas' ? 'border-b-2 border-accent text-accent' : 'text-secondary hover:text-primary'}`} onClick={() => setActiveTab('personas')}>Personas</button>
+                <button className={`py-2 px-4 text-lg font-medium ${activeTab === 'comments' ? 'border-b-2 border-accent text-accent' : 'text-secondary hover:text-primary'}`} onClick={() => setActiveTab('comments')}>Comments</button>
             </div>
 
             {activeTab === 'users' && (
-                <div>
-                    <h2 className="text-xl font-semibold mb-3">Manage Users</h2>
+                <div className="bg-card p-6 rounded-lg shadow-md">
+                    <h2 className="text-2xl font-semibold mb-4 text-primary">Manage Users</h2>
                     <div className="overflow-x-auto">
-                        <table className="table w-full">
-                            <thead>
+                        <table className="min-w-full bg-background rounded-lg overflow-hidden">
+                            <thead className="bg-gray-700 text-white">
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Email</th>
-                                    <th>Name</th>
-                                    <th>Role</th>
-                                    <th>Actions</th>
+                                    <th className="py-3 px-4 text-left">ID</th>
+                                    <th className="py-3 px-4 text-left">Email</th>
+                                    <th className="py-3 px-4 text-left">Name</th>
+                                    <th className="py-3 px-4 text-left">Role</th>
+                                    <th className="py-3 px-4 text-left">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="text-secondary">
                                 {users.map(u => (
-                                    <tr key={u.id}>
-                                        <td>{u.id}</td>
-                                        <td>{u.email}</td>
-                                        <td>{u.name}</td>
-                                        <td>{u.role}</td>
-                                        <td>
-                                            <button className="btn btn-sm btn-info mr-2" onClick={() => handleEditUser(u)}>Edit</button>
-                                            <button className="btn btn-sm btn-error" onClick={() => handleDeleteUser(u.id)}>Delete</button>
+                                    <tr key={u.id} className="border-t border-border">
+                                        <td className="py-3 px-4">{u.id}</td>
+                                        <td className="py-3 px-4">{u.email}</td>
+                                        <td className="py-3 px-4">{u.name}</td>
+                                        <td className="py-3 px-4">{u.role}</td>
+                                        <td className="py-3 px-4">
+                                            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded mr-2" onClick={() => handleEditUser(u)}>Edit</button>
+                                            <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" onClick={() => handleDeleteUser(u.id)}>Delete</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -165,29 +165,29 @@ const AdminPage: React.FC = () => {
             )}
 
             {activeTab === 'prompts' && (
-                <div>
-                    <h2 className="text-xl font-semibold mb-3">Manage Prompts</h2>
+                <div className="bg-card p-6 rounded-lg shadow-md">
+                    <h2 className="text-2xl font-semibold mb-4 text-primary">Manage Prompts</h2>
                     <div className="overflow-x-auto">
-                        <table className="table w-full">
-                            <thead>
+                        <table className="min-w-full bg-background rounded-lg overflow-hidden">
+                            <thead className="bg-gray-700 text-white">
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Title</th>
-                                    <th>Author</th>
-                                    <th>Public</th>
-                                    <th>Actions</th>
+                                    <th className="py-3 px-4 text-left">ID</th>
+                                    <th className="py-3 px-4 text-left">Title</th>
+                                    <th className="py-3 px-4 text-left">Author</th>
+                                    <th className="py-3 px-4 text-left">Public</th>
+                                    <th className="py-3 px-4 text-left">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="text-secondary">
                                 {prompts.map(p => (
-                                    <tr key={p.id}>
-                                        <td>{p.id}</td>
-                                        <td>{p.title}</td>
-                                        <td>{p.author}</td>
-                                        <td>{p.isPublic ? 'Yes' : 'No'}</td>
-                                        <td>
-                                            <button className="btn btn-sm btn-info mr-2" onClick={() => handleEditItem(p, 'prompt')}>Edit</button>
-                                            <button className="btn btn-sm btn-error" onClick={() => handleDeleteItem(p.id, 'prompt')}>Delete</button>
+                                    <tr key={p.id} className="border-t border-border">
+                                        <td className="py-3 px-4">{p.id}</td>
+                                        <td className="py-3 px-4">{p.title}</td>
+                                        <td className="py-3 px-4">{p.author}</td>
+                                        <td className="py-3 px-4">{p.isPublic ? 'Yes' : 'No'}</td>
+                                        <td className="py-3 px-4">
+                                            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded mr-2" onClick={() => handleEditItem(p, 'prompt')}>Edit</button>
+                                            <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" onClick={() => handleDeleteItem(p.id, 'prompt')}>Delete</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -198,29 +198,29 @@ const AdminPage: React.FC = () => {
             )}
 
             {activeTab === 'agents' && (
-                <div>
-                    <h2 className="text-xl font-semibold mb-3">Manage Agents</h2>
+                <div className="bg-card p-6 rounded-lg shadow-md">
+                    <h2 className="text-2xl font-semibold mb-4 text-primary">Manage Agents</h2>
                     <div className="overflow-x-auto">
-                        <table className="table w-full">
-                            <thead>
+                        <table className="min-w-full bg-background rounded-lg overflow-hidden">
+                            <thead className="bg-gray-700 text-white">
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Title</th>
-                                    <th>Author</th>
-                                    <th>Public</th>
-                                    <th>Actions</th>
+                                    <th className="py-3 px-4 text-left">ID</th>
+                                    <th className="py-3 px-4 text-left">Title</th>
+                                    <th className="py-3 px-4 text-left">Author</th>
+                                    <th className="py-3 px-4 text-left">Public</th>
+                                    <th className="py-3 px-4 text-left">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="text-secondary">
                                 {agents.map(a => (
-                                    <tr key={a.id}>
-                                        <td>{a.id}</td>
-                                        <td>{a.title}</td>
-                                        <td>{a.author}</td>
-                                        <td>{a.isPublic ? 'Yes' : 'No'}</td>
-                                        <td>
-                                            <button className="btn btn-sm btn-info mr-2" onClick={() => handleEditItem(a, 'agent')}>Edit</button>
-                                            <button className="btn btn-sm btn-error" onClick={() => handleDeleteItem(a.id, 'agent')}>Delete</button>
+                                    <tr key={a.id} className="border-t border-border">
+                                        <td className="py-3 px-4">{a.id}</td>
+                                        <td className="py-3 px-4">{a.title}</td>
+                                        <td className="py-3 px-4">{a.author}</td>
+                                        <td className="py-3 px-4">{a.isPublic ? 'Yes' : 'No'}</td>
+                                        <td className="py-3 px-4">
+                                            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded mr-2" onClick={() => handleEditItem(a, 'agent')}>Edit</button>
+                                            <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" onClick={() => handleDeleteItem(a.id, 'agent')}>Delete</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -231,29 +231,29 @@ const AdminPage: React.FC = () => {
             )}
 
             {activeTab === 'personas' && (
-                <div>
-                    <h2 className="text-xl font-semibold mb-3">Manage Personas</h2>
+                <div className="bg-card p-6 rounded-lg shadow-md">
+                    <h2 className="text-2xl font-semibold mb-4 text-primary">Manage Personas</h2>
                     <div className="overflow-x-auto">
-                        <table className="table w-full">
-                            <thead>
+                        <table className="min-w-full bg-background rounded-lg overflow-hidden">
+                            <thead className="bg-gray-700 text-white">
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Title</th>
-                                    <th>Author</th>
-                                    <th>Public</th>
-                                    <th>Actions</th>
+                                    <th className="py-3 px-4 text-left">ID</th>
+                                    <th className="py-3 px-4 text-left">Title</th>
+                                    <th className="py-3 px-4 text-left">Author</th>
+                                    <th className="py-3 px-4 text-left">Public</th>
+                                    <th className="py-3 px-4 text-left">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="text-secondary">
                                 {personas.map(p => (
-                                    <tr key={p.id}>
-                                        <td>{p.id}</td>
-                                        <td>{p.title}</td>
-                                        <td>{p.author}</td>
-                                        <td>{p.isPublic ? 'Yes' : 'No'}</td>
-                                        <td>
-                                            <button className="btn btn-sm btn-info mr-2" onClick={() => handleEditItem(p, 'persona')}>Edit</button>
-                                            <button className="btn btn-sm btn-error" onClick={() => handleDeleteItem(p.id, 'persona')}>Delete</button>
+                                    <tr key={p.id} className="border-t border-border">
+                                        <td className="py-3 px-4">{p.id}</td>
+                                        <td className="py-3 px-4">{p.title}</td>
+                                        <td className="py-3 px-4">{p.author}</td>
+                                        <td className="py-3 px-4">{p.isPublic ? 'Yes' : 'No'}</td>
+                                        <td className="py-3 px-4">
+                                            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded mr-2" onClick={() => handleEditItem(p, 'persona')}>Edit</button>
+                                            <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" onClick={() => handleDeleteItem(p.id, 'persona')}>Delete</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -264,28 +264,28 @@ const AdminPage: React.FC = () => {
             )}
 
             {activeTab === 'comments' && (
-                <div>
-                    <h2 className="text-xl font-semibold mb-3">Manage Comments</h2>
+                <div className="bg-card p-6 rounded-lg shadow-md">
+                    <h2 className="text-2xl font-semibold mb-4 text-primary">Manage Comments</h2>
                     <div className="overflow-x-auto">
-                        <table className="table w-full">
-                            <thead>
+                        <table className="min-w-full bg-background rounded-lg overflow-hidden">
+                            <thead className="bg-gray-700 text-white">
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Item ID</th>
-                                    <th>Author</th>
-                                    <th>Content</th>
-                                    <th>Actions</th>
+                                    <th className="py-3 px-4 text-left">ID</th>
+                                    <th className="py-3 px-4 text-left">Item ID</th>
+                                    <th className="py-3 px-4 text-left">Author</th>
+                                    <th className="py-3 px-4 text-left">Content</th>
+                                    <th className="py-3 px-4 text-left">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="text-secondary">
                                 {comments.map(c => (
-                                    <tr key={c.id}>
-                                        <td>{c.id}</td>
-                                        <td>{c.itemId}</td>
-                                        <td>{c.authorName}</td>
-                                        <td>{c.content}</td>
-                                        <td>
-                                            <button className="btn btn-sm btn-error" onClick={() => handleDeleteComment(c.id)}>Delete</button>
+                                    <tr key={c.id} className="border-t border-border">
+                                        <td className="py-3 px-4">{c.id}</td>
+                                        <td className="py-3 px-4">{c.itemId}</td>
+                                        <td className="py-3 px-4">{c.authorName}</td>
+                                        <td className="py-3 px-4">{c.content}</td>
+                                        <td className="py-3 px-4">
+                                            <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" onClick={() => handleDeleteComment(c.id)}>Delete</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -297,40 +297,40 @@ const AdminPage: React.FC = () => {
 
             {editingUser && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-card p-6 rounded-lg shadow-lg w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">Edit User</h2>
+                    <div className="bg-card p-6 rounded-lg shadow-lg w-full max-w-md border border-border">
+                        <h2 className="text-2xl font-bold mb-4 text-primary">Edit User</h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-secondary">Name</label>
+                                <label className="block text-sm font-medium text-secondary mb-1">Name</label>
                                 <input
                                     type="text"
-                                    className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                    className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                     value={editingUser.name || ''}
                                     onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-secondary">Email</label>
+                                <label className="block text-sm font-medium text-secondary mb-1">Email</label>
                                 <input
                                     type="email"
-                                    className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                    className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                     value={editingUser.email || ''}
                                     onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-secondary">Avatar URL</label>
+                                <label className="block text-sm font-medium text-secondary mb-1">Avatar URL</label>
                                 <input
                                     type="text"
-                                    className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                    className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                     value={editingUser.avatarUrl || ''}
                                     onChange={(e) => setEditingUser({ ...editingUser, avatarUrl: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-secondary">Role</label>
+                                <label className="block text-sm font-medium text-secondary mb-1">Role</label>
                                 <select
-                                    className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                    className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                     value={editingUser.role || 'user'}
                                     onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as 'user' | 'admin' })}
                                 >
@@ -340,8 +340,8 @@ const AdminPage: React.FC = () => {
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end space-x-3">
-                            <button className="btn btn-ghost" onClick={() => setEditingUser(null)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={handleSaveUser}>Save</button>
+                            <button className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700" onClick={() => setEditingUser(null)}>Cancel</button>
+                            <button className="px-4 py-2 bg-accent text-white rounded-md hover:bg-accent/90" onClick={handleSaveUser}>Save</button>
                         </div>
                     </div>
                 </div>
@@ -349,40 +349,40 @@ const AdminPage: React.FC = () => {
 
             {editingItem && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-card p-6 rounded-lg shadow-lg w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">Edit {editingItem.type.charAt(0).toUpperCase() + editingItem.type.slice(1)}</h2>
+                    <div className="bg-card p-6 rounded-lg shadow-lg w-full max-w-md border border-border">
+                        <h2 className="text-2xl font-bold mb-4 text-primary">Edit {editingItem.type.charAt(0).toUpperCase() + editingItem.type.slice(1)}</h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-secondary">Title</label>
+                                <label className="block text-sm font-medium text-secondary mb-1">Title</label>
                                 <input
                                     type="text"
-                                    className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                    className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                     value={editingItem.title || ''}
                                     onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-secondary">Description</label>
+                                <label className="block text-sm font-medium text-secondary mb-1">Description</label>
                                 <textarea
-                                    className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                    className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                     value={editingItem.description || ''}
                                     onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-secondary">Tags (comma-separated)</label>
+                                <label className="block text-sm font-medium text-secondary mb-1">Tags (comma-separated)</label>
                                 <input
                                     type="text"
-                                    className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                    className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                     value={Array.isArray(editingItem.tags) ? editingItem.tags.join(', ') : editingItem.tags || ''}
                                     onChange={(e) => setEditingItem({ ...editingItem, tags: e.target.value.split(',').map(tag => tag.trim()) })}
                                 />
                             </div>
                             {'text' in editingItem && (
                                 <div>
-                                    <label className="block text-sm font-medium text-secondary">Text</label>
+                                    <label className="block text-sm font-medium text-secondary mb-1">Text</label>
                                     <textarea
-                                        className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                        className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                         value={(editingItem as Prompt).text || ''}
                                         onChange={(e) => setEditingItem({ ...editingItem, text: e.target.value })}
                                     />
@@ -390,9 +390,9 @@ const AdminPage: React.FC = () => {
                             )}
                             {'systemInstruction' in editingItem && (
                                 <div>
-                                    <label className="block text-sm font-medium text-secondary">System Instruction</label>
+                                    <label className="block text-sm font-medium text-secondary mb-1">System Instruction</label>
                                     <textarea
-                                        className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                        className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                         value={(editingItem as Agent | Persona).systemInstruction || ''}
                                         onChange={(e) => setEditingItem({ ...editingItem, systemInstruction: e.target.value })}
                                     />
@@ -400,10 +400,10 @@ const AdminPage: React.FC = () => {
                             )}
                             {'category' in editingItem && (
                                 <div>
-                                    <label className="block text-sm font-medium text-secondary">Category</label>
+                                    <label className="block text-sm font-medium text-secondary mb-1">Category</label>
                                     <input
                                         type="text"
-                                        className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                        className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                         value={(editingItem as Prompt).category || ''}
                                         onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
                                     />
@@ -411,34 +411,34 @@ const AdminPage: React.FC = () => {
                             )}
                             {'supportedInputs' in editingItem && (
                                 <div>
-                                    <label className="block text-sm font-medium text-secondary">Supported Inputs (comma-separated)</label>
+                                    <label className="block text-sm font-medium text-secondary mb-1">Supported Inputs (comma-separated)</label>
                                     <input
                                         type="text"
-                                        className="w-full p-2 border border-border rounded-md bg-background text-primary"
+                                        className="w-full p-2 border border-border rounded-md bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                                         value={Array.isArray((editingItem as Prompt).supportedInputs) ? (editingItem as Prompt).supportedInputs?.join(', ') : (editingItem as Prompt).supportedInputs || ''}
                                         onChange={(e) => setEditingItem({ ...editingItem, supportedInputs: e.target.value.split(',').map(input => input.trim()) })}
                                     />
                                 </div>
                             )}
                             <div>
-                                <label className="block text-sm font-medium text-secondary">Is Public</label>
+                                <label className="block text-sm font-medium text-secondary mb-1">Is Public</label>
                                 <input
                                     type="checkbox"
-                                    className="toggle toggle-primary"
+                                    className="form-checkbox h-5 w-5 text-accent rounded focus:ring-accent"
                                     checked={editingItem.isPublic}
                                     onChange={(e) => setEditingItem({ ...editingItem, isPublic: e.target.checked })}
                                 />
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end space-x-3">
-                            <button className="btn btn-ghost" onClick={() => setEditingItem(null)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={handleSaveItem}>Save</button>
+                            <button className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700" onClick={() => setEditingItem(null)}>Cancel</button>
+                            <button className="px-4 py-2 bg-accent text-white rounded-md hover:bg-accent/90" onClick={handleSaveItem}>Save</button>
                         </div>
                     </div>
                 </div>
             )}
         </main>
     );
-};
+    };
 
 export default AdminPage;

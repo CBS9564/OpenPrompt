@@ -19,7 +19,7 @@ import CommunityHeader from './components/CommunityHeader';
 import PromptCard from './components/PromptCard';
 import AgentCard from './components/AgentCard';
 import PersonaCard from './components/PersonaCard';
-import ContextCard from './components/ContextCard';
+
 import AdminPage from './components/AdminPage'; // Import the new AdminPage
 
 const AppContent: React.FC = () => {
@@ -459,7 +459,7 @@ const AppContent: React.FC = () => {
                         <Route path="/my-agents" element={renderListPage("My Agents", "Your personal collection of agents.", agents, AgentCard, 'agent', true)} />
                         <Route path="/personas" element={renderListPage("Community Personas", "Explore fun and interesting AI personas for roleplaying.", personas, PersonaCard, 'persona', false)} />
                         <Route path="/my-personas" element={renderListPage("My Personas", "Your personal collection of personas.", personas, PersonaCard, 'persona', true)} />
-                        <Route path="/my-contexts" element={renderListPage("My Contexts", "Your personal collection of contexts.", contexts, ContextCard, 'context', true)} />
+                        
                         <Route path="/create" element={<CreationPage onPublish={handlePublish} onCancel={() => navigate('/')} apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} />} />
                         <Route path="/profile" element={<ProfilePage onBack={() => navigate(-1)} />} />
                         {user?.role === 'admin' && <Route path="/admin" element={<AdminPage />} />}
