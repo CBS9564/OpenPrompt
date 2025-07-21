@@ -1,22 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { PlaygroundItem, Prompt, Agent, Persona, ContextItem, LLMProvider, ApiKeys } from '../types';
+import { ApiKeys, LLMProvider } from '../types';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { BoltIcon } from './icons/BoltIcon';
 import { AVAILABLE_MODELS } from '../constants';
-import { DocumentTextIcon } from './icons/DocumentTextIcon';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { PaperClipIcon } from './icons/PaperClipIcon';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
 
+import ModelSelector from './ModelSelector';
+
 // Import custom hooks
 import { useChatLogic } from '../hooks/useChatLogic';
-import { usePromptVariableFilling } from '../hooks/usePromptVariableFilling';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
-interface PlaygroundProps {
-  selectedItem?: PlaygroundItem | null; // Make selectedItem optional
+interface OnlyChatPageProps {
   apiKeys: ApiKeys;
   fetchedOllamaModels: string[];
   fetchedGeminiModels: string[];
@@ -25,9 +24,8 @@ interface PlaygroundProps {
   onSaveLLMSettings: (provider: LLMProvider, model: string) => void;
 }
 
-const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedOllamaModels, fetchedGeminiModels, selectedLLMProvider, selectedLLMModel, onSaveLLMSettings }) => {
+const OnlyChatPage: React.FC<OnlyChatPageProps> = ({ apiKeys, fetchedOllamaModels, fetchedGeminiModels, selectedLLMProvider, selectedLLMModel, onSaveLLMSettings }) => {
   const [userInput, setUserInput] = useState('');
-  const [injectedContextId, setInjectedContextId] = useState<string>('none');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
@@ -39,28 +37,6 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
     apiKeys,
     selectedLLMProvider,
     selectedLLMModel,
-  });
-
-  const { 
-    promptVariables,
-    currentVariableIndex,
-    isFillingVariables,
-    finalPromptText,
-    handleVariableInput,
-    resetVariableFilling,
-    setFinalPromptText
-  } = usePromptVariableFilling({
-    selectedItem,
-    onVariablesFilled: (filledPrompt) => {
-      setFinalPromptText(filledPrompt);
-      setMessages(prev => [...prev, {
-        role: 'system',
-        content: `All variables filled! Here's the final prompt. You can add more details below or just click "Run".\n\n---\n${filledPrompt}`
-      }]);
-    },
-    onResetChat: useCallback(() => {
-      resetChat();
-    }, [resetChat]),
   });
 
   const { isRecording, toggleRecognition } = useSpeechRecognition({
@@ -75,63 +51,21 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, currentAiMessageContent]);
 
   useEffect(() => {
     setUserInput('');
     setAttachedImage(null);
     resetChat();
-    resetVariableFilling(); // Keep this as it's part of usePromptVariableFilling
-
-    if (selectedItem) {
-      const isPrompt = (item: PlaygroundItem): item is Prompt & { type: 'prompt' } => {
-        return item.type === 'prompt';
-      };
-
-      if (isPrompt(selectedItem) && /\{\{\w+\}\} /.test(selectedItem.text)) {
-        const uniqueVariables = [...new Set(selectedItem.text.match(/\{\{\w+\}\} /g)?.map(v => v.slice(2, -2)) || [])];
-        if (uniqueVariables.length > 0) {
-          setMessages([{ role: 'ai', content: `This prompt needs some information. First, what is the value for "${uniqueVariables[0]}"?` }]);
-          return;
-        }
-      }
-      
-      const itemType = selectedItem.type === 'prompt' ? 'Prompt' : 'Agent/Persona';
-      const contentText = selectedItem.type === 'prompt' 
-          ? `\n\nTemplate:\n---\n${selectedItem.text}` 
-          : `\n\nSystem Instruction:\n---\n${selectedItem.systemInstruction}`;
-      
-      setMessages([{ 
-          role: 'system', 
-          content: `Testing ${itemType}: "${selectedItem.title}"${contentText}`
-      }]);
-    } else {
-      // If no item is selected, clear messages for a free-form chat
-      setMessages([]);
-    }
-  }, [selectedItem, resetChat, resetVariableFilling, setMessages]);
+  }, [resetChat]);
 
   const handleRun = useCallback(async () => {
-    if (!selectedItem || isLoading) return;
+    if (isLoading) return;
 
-    if (isFillingVariables) {
-      const result = handleVariableInput(userInput);
-      setUserInput('');
-      if (result.status === 'needs_more_input') {
-        setMessages(prev => [...prev, { role: 'user', content: userInput }, { role: 'ai', content: `Great. Now, what's the value for "${result.nextVar}"?` }]);
-      } else if (result.status === 'filled') {
-        // Messages for filled state are handled by onVariablesFilled callback in usePromptVariableFilling
-      }
-      return;
-    }
-
-    await sendMessage(userInput, selectedItem, attachedImage, finalPromptText);
+    await sendMessage(userInput, null, attachedImage, null); // selectedItem is null for only chat
     setUserInput('');
     setAttachedImage(null);
-    if (finalPromptText) {
-      setFinalPromptText(null);
-    }
-  }, [selectedItem, userInput, injectedContextId, attachedImage, finalPromptText, isLoading, isFillingVariables, handleVariableInput, sendMessage, setFinalPromptText, setMessages]);
+  }, [userInput, attachedImage, isLoading, sendMessage]);
   
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -146,15 +80,8 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
   };
 
   const renderPlaceholder = () => {
-    if (!selectedItem) return "Select an item to begin...";
-    if (isFillingVariables) return `Enter a value for "${promptVariables[currentVariableIndex]}"...`;
-    if (finalPromptText) return "Add additional context or input (optional)...";
     if (attachedImage) return "Describe the image or add instructions...";
-    const isSystemItem = (item: PlaygroundItem): item is (Agent & { type: 'agent' }) | (Persona & { type: 'persona' }) => {
-      return item.type === 'agent' || item.type === 'persona';
-    };
-    if (isSystemItem(selectedItem)) return `Send a message to ${selectedItem.title}...`;
-    return "Add additional context or input (optional)...";
+    return "Start chatting...";
   };
   
   const hasText = userInput.trim().length > 0;
@@ -162,16 +89,8 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
   const hasAnyInput = hasText || hasImage;
 
   const isRunDisabled = useMemo(() => {
-    if (isLoading || !selectedItem) return true;
-    if (isFillingVariables) return !hasText;
-    if (finalPromptText) return false;
-    const isSystemItem = (item: PlaygroundItem): item is (Agent & { type: 'agent' }) | (Persona & { type: 'persona' }) => {
-      return item.type === 'agent' || item.type === 'persona';
-    };
-    if (isSystemItem(selectedItem)) return !hasAnyInput;
-    // For prompts, can run without additional input
-    return false;
-  }, [isLoading, selectedItem, isFillingVariables, hasText, finalPromptText, hasAnyInput]);
+    return isLoading || !hasAnyInput;
+  }, [isLoading, hasAnyInput]);
   
   const selectClasses = "w-full bg-card border border-border rounded-md text-sm px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent text-primary capitalize";
 
@@ -195,33 +114,32 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
       return AVAILABLE_MODELS[selectedLLMProvider] || [];
   }, [selectedLLMProvider, ollamaModels, fetchedGeminiModels]);
   
-  useEffect(() => {
-      if (selectedLLMProvider === LLMProvider.OLLAMA && apiKeys.ollama?.model) {
-          onSaveLLMSettings(selectedLLMProvider, apiKeys.ollama.model);
-      } else if (!currentProviderModels.includes(selectedLLMModel || '')) {
-          onSaveLLMSettings(selectedLLMProvider, currentProviderModels[0]);
-      } else if (currentProviderModels.length > 0 && !selectedLLMModel) {
-          onSaveLLMSettings(selectedLLMProvider, currentProviderModels[0]);
-      }
-  }, [selectedLLMProvider, currentProviderModels, apiKeys.ollama?.model, selectedLLMModel, onSaveLLMSettings]);
+  
 
   return (
     <div className="flex flex-col h-full bg-content">
       <div className="flex-shrink-0 p-4 border-b border-border">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-lg font-bold text-primary">Playground</h2>
+            <h2 className="text-lg font-bold text-primary">Only Chat</h2>
             <p className="text-sm text-secondary truncate max-w-xs">
-              {selectedItem ? `Testing: ${selectedItem.title}` : 'Select an item to test'}
+              Start a free-form conversation with your selected LLM.
             </p>
           </div>
           <div className="flex flex-col gap-2 w-48">
-            <select value={selectedLLMProvider} onChange={(e) => onSaveLLMSettings(e.target.value as LLMProvider, null)} className={selectClasses} aria-label="Select Provider">
-              {Object.values(LLMProvider).map(provider => <option key={provider} value={provider}>{provider}</option>)}
-            </select>
-            <select value={selectedLLMModel || ''} onChange={(e) => onSaveLLMSettings(selectedLLMProvider, e.target.value)} className={`${selectClasses} normal-case`} aria-label="Select Model" disabled={currentProviderModels.length === 0}>
-              {currentProviderModels.map(model => <option key={model} value={model}>{model}</option>)}
-            </select>
+            <ModelSelector
+              label="Select Provider"
+              items={Object.values(LLMProvider).map(p => ({ value: p, label: p, provider: p }))}
+              selectedValue={selectedLLMProvider}
+              onSelect={(provider) => onSaveLLMSettings(provider as LLMProvider, null)}
+            />
+            <ModelSelector
+              label="Select Model"
+              items={currentProviderModels.map(m => ({ value: m, label: m, provider: selectedLLMProvider }))}
+              selectedValue={selectedLLMModel}
+              onSelect={(model) => onSaveLLMSettings(selectedLLMProvider, model)}
+              disabled={currentProviderModels.length === 0}
+            />
           </div>
         </div>
       </div>
@@ -289,9 +207,7 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
           </div>
 
           <div className="flex-shrink-0 p-4 border-t border-border bg-content">
-             {selectedItem ? (
-                 <>
-                    <div className="relative">
+             <div className="relative">
                        {attachedImage && (
                           <div className="absolute bottom-full left-0 mb-2 p-1.5 bg-card rounded-lg border border-border shadow-lg">
                             <img src={attachedImage} alt="Preview" className="max-h-24 rounded" />
@@ -309,14 +225,14 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
                         }}
                         placeholder={renderPlaceholder()}
                         className="w-full h-24 p-3 pr-32 bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-primary text-sm leading-relaxed"
-                        disabled={!selectedItem || isLoading}
+                        disabled={isLoading}
                       />
                       <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1">
                         <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
-                        <button onClick={() => fileInputRef.current?.click()} disabled={!selectedItem || isLoading || !!attachedImage || isFillingVariables} title="Attach Image" className="p-2 text-secondary rounded-md disabled:text-secondary/50 disabled:cursor-not-allowed hover:text-primary transition-colors">
+                        <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || !!attachedImage} title="Attach Image" className="p-2 text-secondary rounded-md disabled:text-secondary/50 disabled:cursor-not-allowed hover:text-primary transition-colors">
                           <PaperClipIcon className="w-5 h-5" />
                         </button>
-                        <button onClick={toggleRecognition} disabled={!selectedItem || isLoading} title="Voice Input" className={`p-2 rounded-md transition-colors ${isRecording ? 'text-red-500 animate-pulse' : 'text-secondary hover:text-primary'} disabled:text-secondary/50 disabled:cursor-not-allowed`}>
+                        <button onClick={toggleRecognition} disabled={isLoading} title="Voice Input" className={`p-2 rounded-md transition-colors ${isRecording ? 'text-red-500 animate-pulse' : 'text-secondary hover:text-primary'} disabled:text-secondary/50 disabled:cursor-not-allowed`}>
                           <MicrophoneIcon className="w-5 h-5" />
                         </button>
                         <button onClick={handleRun} disabled={isRunDisabled} className="p-2.5 bg-accent text-white font-semibold rounded-md disabled:bg-card-hover disabled:text-secondary disabled:cursor-not-allowed hover:bg-accent/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:ring-accent">
@@ -324,16 +240,10 @@ const Playground: React.FC<PlaygroundProps> = ({ selectedItem, apiKeys, fetchedO
                         </button>
                       </div>
                     </div>
-                 </>
-             ) : (
-                 <div className="flex-1 flex items-center justify-center h-full">
-                    <p className="text-secondary">Select an item from the list to start testing.</p>
-                 </div>
-             )}
           </div>
       </div>
     </div>
   );
 };
 
-export default Playground;
+export default OnlyChatPage;

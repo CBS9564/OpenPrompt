@@ -54,16 +54,6 @@ export interface Persona {
   attachments?: Attachment[];
 }
 
-export interface ContextItem {
-  id: string;
-  title: string;
-  description: string;
-  content: string;
-  author?: string;
-  tags: string[];
-  isPublic: boolean;
-}
-
 export type PlaygroundItem =
   | (Prompt & { type: 'prompt' })
   | (Agent & { type: 'agent' })
@@ -75,13 +65,13 @@ export enum View {
   PROMPTS = 'prompts',
   AGENTS = 'agents',
   PERSONAS = 'personas',
-  CONTEXTS = 'contexts',
   CREATE = 'create',
   MY_PROMPTS = '/my-prompts',
   MY_AGENTS = '/my-agents',
   MY_PERSONAS = '/my-personas',
-  MY_CONTEXTS = '/my-contexts',
   PROFILE = 'profile',
+  ONLY_CHAT = 'only-chat',
+  RUMBLE = 'rumble',
 }
 
 export enum LLMProvider {
@@ -127,7 +117,7 @@ export interface AuthContextType {
 }
 
 export interface PublishableItem {
-  type: 'prompt' | 'agent' | 'persona' | 'context';
+  type: 'prompt' | 'agent' | 'persona';
   title: string;
   description: string;
   tags: string[];

@@ -3,6 +3,7 @@ import { LLMProvider } from './types';
 export const AVAILABLE_MODELS = {
   [LLMProvider.GEMINI]: [
     'gemini-2.5-flash',
+    'gemini-pro',
   ],
   [LLMProvider.ANTHROPIC]: [
     'claude-3-opus-20240229',

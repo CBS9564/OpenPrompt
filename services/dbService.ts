@@ -134,20 +134,6 @@ export const deletePersona = async (id: string, token: string) => {
     return fetchApi(`/personas/${id}`, 'DELETE', undefined, token);
 };
 
-// Contexts
-export const getContexts = async (token: string): Promise<ContextItem[]> => {
-    const { data, error } = await fetchApi<ContextItem[]>('/contexts', 'GET', undefined, token);
-    if (error) {
-        console.error("Error fetching contexts:", error);
-        return [];
-    }
-    return data || [];
-};
-
-export const addContext = async (context: ContextItem, token: string) => {
-    return fetchApi('/contexts', 'POST', context, token);
-};
-
 // Social Features
 export const getCommentsForItem = async (itemId: string, token: string): Promise<Comment[]> => {
     const { data, error } = await fetchApi<Comment[]>(`/comments/${itemId}`, 'GET', undefined, token);

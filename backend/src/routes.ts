@@ -242,30 +242,6 @@ export const setupRoutes = (db: Database) => {
     }
   });
 
-  // Contexts Routes
-  router.get('/contexts', async (req, res) => {
-    try {
-      const contexts = await db.all('SELECT * FROM contexts');
-      res.json(contexts.map((c: any) => parseJsonFields(c, ['tags'])));
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  router.post('/contexts', async (req, res) => {
-    try {
-      const { title, description, content, author, tags, isPublic } = req.body;
-      const id = uuidv4(); // Generate a unique ID
-      await db.run(
-        'INSERT INTO contexts (id, title, description, content, author, tags, isPublic) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        id, title, description, content, author, JSON.stringify(tags), isPublic ? 1 : 0
-      );
-      res.status(201).json({ message: 'Context added', id });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
   // Attachments (read-only for now, handled via parent item CRUD)
   router.get('/attachments/:itemId', async (req, res) => {
     try {

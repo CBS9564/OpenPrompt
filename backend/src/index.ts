@@ -10,7 +10,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import readline from 'readline';
 import { setupRoutes } from './routes';
-import { COMMUNITY_PROMPTS, COMMUNITY_AGENTS, COMMUNITY_PERSONAS, COMMUNITY_CONTEXTS, TEST_USERS, generateTestComments } from './data/communityData'; // Import community data
+import { COMMUNITY_PROMPTS, COMMUNITY_AGENTS, COMMUNITY_PERSONAS, TEST_USERS, generateTestComments } from './data/communityData'; // Import community data
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -57,16 +57,6 @@ CREATE TABLE IF NOT EXISTS personas (
   author TEXT,
   isRecommended INTEGER,
   createdAt INTEGER,
-  isPublic INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS contexts (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  content TEXT NOT NULL,
-  author TEXT,
-  tags TEXT,
   isPublic INTEGER NOT NULL
 );
 
@@ -174,12 +164,6 @@ async function initializeDatabase() {
         p.id, p.title, p.description, JSON.stringify(p.tags), p.systemInstruction, p.author, p.isRecommended ? 1 : 0, p.createdAt || Date.now(), p.isPublic ? 1 : 0
       );
     }
-    for (const c of COMMUNITY_CONTEXTS) {
-      await db.run(
-        'INSERT INTO contexts (id, title, description, content, author, tags, isPublic) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        c.id, c.title, c.description, c.content, c.author, JSON.stringify(c.tags), c.isPublic ? 1 : 0
-      );
-    }
     console.log('Community data seeded.');
 
     // Seed test users
@@ -193,7 +177,7 @@ async function initializeDatabase() {
     console.log('Test users seeded.');
 
     // Generate and seed comments
-    const allItems = [...COMMUNITY_PROMPTS, ...COMMUNITY_AGENTS, ...COMMUNITY_PERSONAS, ...COMMUNITY_CONTEXTS];
+    const allItems = [...COMMUNITY_PROMPTS, ...COMMUNITY_AGENTS, ...COMMUNITY_PERSONAS];
     const allUsers = await db.all('SELECT * FROM users'); // Fetch all users including newly seeded ones
     const testComments = generateTestComments(allItems, allUsers);
 
@@ -279,11 +263,14 @@ initializeDatabase().then(() => {
     }
   };
 
-  // Apply authentication to all API routes (except auth)
-  app.use('/api', authenticateToken);
-
-  // General API Routes
-  app.use('/api', setupRoutes(db));
+  // General API Routes (public GET, authenticated POST/PUT/DELETE)
+  app.use('/api', (req, res, next) => {
+    if (req.method === 'GET') {
+      next(); // Allow GET requests without authentication
+    } else {
+      authenticateToken(req, res, next); // Authenticate other methods
+    }
+  }, setupRoutes(db));
 
   // Admin API Routes
   app.get('/api/admin/users', authorizeAdmin, async (req, res) => {

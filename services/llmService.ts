@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { LLMProvider, Agent, Persona, ApiKeys, OllamaCredentials } from '../types';
 
@@ -114,10 +113,14 @@ interface GenerateContentParams {
   prompt: string;
   agent: Agent | Persona | undefined;
   image: string | null;
+  signal?: AbortSignal; // Add AbortSignal
 }
 
 
 export const generateContent = async ({ apiKeys, provider, model, prompt, agent, image }: GenerateContentParams): Promise<string> => {
+  if (!apiKeys) {
+    return "Error: API Keys are not configured. Please check the application setup.";
+  }
   switch (provider) {
     case LLMProvider.GEMINI:
       return generateGeminiContent(apiKeys.gemini, model, prompt, agent || null, image);
@@ -137,7 +140,8 @@ export const generateContent = async ({ apiKeys, provider, model, prompt, agent,
 
 // --- STREAMING IMPLEMENTATIONS ---
 
-async function* generateGeminiContentStream(apiKey: string, model: string, prompt: string, agent: Agent | Persona | null, image: string | null): AsyncGenerator<string> {
+async function* generateGeminiContentStream(apiKey: string, model: string, prompt: string, agent: Agent | Persona | null, image: string | null, signal?: AbortSignal): AsyncGenerator<string> {
+    console.log("generateGeminiContentStream: Received API Key:", apiKey ? "[Key Provided]" : "[Key Missing]");
     const ai = new GoogleGenAI({ apiKey });
     let contents;
     if (image) {
@@ -153,13 +157,13 @@ async function* generateGeminiContentStream(apiKey: string, model: string, promp
       model,
       contents,
       ...(agent && { config: { systemInstruction: agent.systemInstruction } }),
-    });
+    }, { signal }); // Pass the signal here
     for await (const chunk of response) {
       yield chunk.text;
     }
 }
 
-async function* generateOllamaContentStream(credentials: OllamaCredentials, model: string, prompt: string, agent: Agent | Persona | null, image: string | null): AsyncGenerator<string> {
+async function* generateOllamaContentStream(credentials: OllamaCredentials, model: string, prompt: string, agent: Agent | Persona | null, image: string | null, signal?: AbortSignal): AsyncGenerator<string> {
     const cleanBaseUrl = credentials.baseUrl.endsWith('/') ? credentials.baseUrl.slice(0, -1) : credentials.baseUrl;
     const endpoint = `${cleanBaseUrl}/api/generate`;
 
@@ -168,7 +172,7 @@ async function* generateOllamaContentStream(credentials: OllamaCredentials, mode
         body.images = [image.split(',')[1]];
     }
 
-    const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal }); // Pass the signal here
 
     if (!response.ok) {
         const errorBody = await response.text();
@@ -214,14 +218,14 @@ async function* generateSimulatedContentStream(provider: LLMProvider, model: str
 }
 
 
-export const generateContentStream = ({ apiKeys, provider, model, prompt, agent, image }: GenerateContentParams): AsyncGenerator<string> => {
+export const generateContentStream = ({ apiKeys, provider, model, prompt, agent, image, signal }: GenerateContentParams): AsyncGenerator<string> => {
     switch(provider) {
         case LLMProvider.GEMINI:
             if (!apiKeys.gemini) throw new Error("Error: Gemini API Key is missing. Please add it in the settings panel.");
-            return generateGeminiContentStream(apiKeys.gemini, model, prompt, agent || null, image);
+            return generateGeminiContentStream(apiKeys.gemini, model, prompt, agent || null, image, signal);
         case LLMProvider.OLLAMA:
             if (!apiKeys.ollama || !apiKeys.ollama.baseUrl) throw new Error("Error: Ollama Base URL is missing. Please add it in the settings panel.");
-            return generateOllamaContentStream(apiKeys.ollama, model, prompt, agent || null, image);
+            return generateOllamaContentStream(apiKeys.ollama, model, prompt, agent || null, image, signal);
         case LLMProvider.ANTHROPIC:
         case LLMProvider.GROQ:
         case LLMProvider.HUGGINGFACE:
@@ -231,6 +235,45 @@ export const generateContentStream = ({ apiKeys, provider, model, prompt, agent,
             throw new Error(`Error: Provider "${exhaustiveCheck}" is not supported for streaming.`);
     }
 }
+
+export const fetchGeminiModels = async (apiKey: string): Promise<string[]> => {
+  if (!apiKey) {
+    throw new Error('Gemini API Key is missing. Cannot fetch models.');
+  }
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.list();
+
+    // The actual array of models is in the `pageInternal` property of the Pager object.
+    const modelList = response.pageInternal;
+    console.log("Raw Gemini models from API (total):", modelList.length); // Log total count
+
+    const filteredModels = modelList
+      .filter(model => {
+        const modelName = model.name.toLowerCase();
+        const displayName = (model.displayName || '').toLowerCase();
+        // Include models that are likely for text generation (gemini, gemma) and exclude embedding/image models
+        return (
+          (modelName.includes('gemini') || displayName.includes('gemini') || modelName.includes('gemma') || displayName.includes('gemma')) &&
+          !modelName.includes('embedding') &&
+          !modelName.includes('aqa') && // Attributed Question Answering
+          !modelName.includes('imagen') // Image generation
+        );
+      })
+      .map(model => model.displayName || model.name.replace('models/', ''))
+      .filter(name => name && name.trim() !== '');
+
+    console.log("DEBUG: Number of Gemini models after filtering:", filteredModels.length); // Log filtered count
+    return filteredModels;
+
+  } catch (error) {
+    console.error("Error during fetchGeminiModels execution:", error);
+    if (error instanceof Error) {
+      return Promise.reject(new Error(`Could not fetch Gemini models: ${error.message}.`));
+    }
+    return Promise.reject(new Error("An unknown error occurred while fetching Gemini models."));
+  }
+};
 
 export const fetchOllamaModels = async (baseUrl: string): Promise<string[]> => {
   if (!baseUrl || !baseUrl.startsWith('http')) {

@@ -1,15 +1,16 @@
-
 import React from 'react';
 
-interface IconProps extends React.SVGProps<SVGSVGElement> {}
+interface IconProps {
+  className?: string;
+}
 
-export const OllamaIcon: React.FC<IconProps> = (props) => (
-  <svg 
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-  >
-      <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm4.243 15.243c-1.44-1.44-2.825-2.184-3.534-2.184s-2.094.74-3.534 2.184c-1.028 1.028-2.586.428-2.586-1.036V9.464c0-1.464 1.558-2.064 2.586-1.036c1.44 1.44 2.825 2.184 3.534 2.184s2.094-.74 3.534-2.184c1.028-1.028 2.586-.428 2.586 1.036v4.743c0 1.464-1.558 2.064-2.586 1.036z" />
+const OllamaIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4">
+      <path d="M24 44c11.046 0 20-8.954 20-20S35.046 4 24 4S4 12.954 4 24s8.954 20 20 20Z"/>
+      <path d="M24 36c6.627 0 12-5.373 12-12s-5.373-12-12-12"/>
+    </g>
   </svg>
 );
+
+export default OllamaIcon;

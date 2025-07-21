@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { ApiKeys, LLMProvider, Agent } from '../types';
 import { AVAILABLE_MODELS } from '../constants';
 import { useRumbleLogic, Participant } from '../hooks/useRumbleLogic';
@@ -30,10 +30,71 @@ const participantTextColors = [
 ];
 
 const RumblePage: React.FC<RumblePageProps> = ({ apiKeys, fetchedOllamaModels, fetchedGeminiModels, agents, selectedLLMProvider, selectedLLMModel }) => {
-  const [participants, setParticipants] = useState<Participant[]>([
-    { id: `p-${Date.now()}-1`, name: 'Participant 1', provider: selectedLLMProvider, model: selectedLLMModel, agent: null },
-    { id: `p-${Date.now()}-2`, name: 'Participant 2', provider: selectedLLMProvider, model: selectedLLMModel, agent: null },
-  ]);
+  const getInitialModel = useCallback((provider: LLMProvider, models: string[], defaultModel: string | null) => {
+    if (defaultModel && models.includes(defaultModel)) {
+      return defaultModel;
+    }
+    return models.length > 0 ? models[0] : null;
+  }, []); // Empty dependency array as it only depends on its arguments
+
+  const initialParticipants = useMemo(() => {
+    return [
+    {
+      id: `p-${Date.now()}-1`,
+      name: 'Participant 1',
+      provider: selectedLLMProvider,
+      model: getInitialModel(
+        selectedLLMProvider,
+        selectedLLMProvider === LLMProvider.GEMINI ? fetchedGeminiModels : fetchedOllamaModels,
+        selectedLLMModel
+      ),
+      agent: null
+    },
+    {
+      id: `p-${Date.now()}-2`,
+      name: 'Participant 2',
+      provider: selectedLLMProvider,
+      model: getInitialModel(
+        selectedLLMProvider,
+        selectedLLMProvider === LLMProvider.GEMINI ? fetchedGeminiModels : fetchedOllamaModels,
+        selectedLLMModel
+      ),
+      agent: null
+    },
+  ]}, [selectedLLMProvider, selectedLLMModel, fetchedOllamaModels, fetchedGeminiModels, getInitialModel]);
+
+  const [participants, setParticipants] = useState<Participant[]>(initialParticipants);
+
+  useEffect(() => {
+    setParticipants(prevParticipants => {
+      return prevParticipants.map(p => {
+        // Determine the current list of models based on the participant's provider
+        const currentModels = p.provider === LLMProvider.GEMINI ? fetchedGeminiModels : fetchedOllamaModels;
+
+        let newModel = p.model; // Start with the current model
+
+        // If the current model is not in the fetched list, or if no model is selected yet
+        if (!newModel || !currentModels.includes(newModel)) {
+          // Try to use the global selectedLLMModel if it's valid and in the fetched list
+          if (selectedLLMModel && currentModels.includes(selectedLLMModel)) {
+            newModel = selectedLLMModel;
+          } else if (currentModels.length > 0) {
+            // Otherwise, fall back to the first available model
+            newModel = currentModels[0];
+          } else {
+            // If no models are fetched, keep it null
+            newModel = null;
+          }
+        }
+
+        // Only update if the model has actually changed
+        if (p.model !== newModel) {
+          return { ...p, model: newModel };
+        }
+        return p;
+      });
+    });
+  }, [fetchedGeminiModels, fetchedOllamaModels, selectedLLMModel]);
   const [initialPrompt, setInitialPrompt] = useState('');
   
   const { messages, isLoading, startRumble, stopRumble } = useRumbleLogic({ apiKeys, orchestrator: ORCHESTRATOR_CONFIG });
@@ -83,12 +144,6 @@ const RumblePage: React.FC<RumblePageProps> = ({ apiKeys, fetchedOllamaModels, f
         }
     };
     const availableModels = useMemo(() => getProviderModels(participant.provider), [participant.provider, fetchedOllamaModels, fetchedGeminiModels]);
-    
-    useEffect(() => {
-        if (!participant.model && availableModels.length > 0) {
-            handleUpdateParticipant(participant.id, { model: availableModels[0] });
-        }
-    }, [participant.model, availableModels, participant.id]);
 
     return (
       <div className="bg-card p-4 rounded-lg border border-border flex-1 relative min-w-[300px]">

@@ -127,6 +127,9 @@ OpenPrompt now operates with a client-server architecture:
 
 Voici un résumé des améliorations et corrections apportées depuis la version précédente :
 
+-   **Correction du chargement et de la sélection des modèles Gemini** : Résolution des problèmes où les modèles Gemini ne s'affichaient pas dans les paramètres et où le modèle par défaut était remplacé dans la page Rumble.
+-   **Ajout de la page "Only Chat"** : Une interface de chat simplifiée pour interagir directement avec les modèles.
+-   **Ajout de la page "Rumble"** : Une fonctionnalité permettant de faire interagir plusieurs agents ou modèles entre eux.
 -   **Intégration du Bouton A2A Manager** : Ajout d'un bouton "A2A Manager" dans le menu déroulant de l'utilisateur pour un accès rapide à l'interface de test A2A.
 -   **Test d'Agents A2A dans le Playground** :
     -   Les cartes d'agent affichent désormais des informations spécifiques au protocole A2A (version, capacités, schémas de sécurité).

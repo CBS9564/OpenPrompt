@@ -4,8 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { DiscoverIcon } from './icons/DiscoverIcon';
 import { CpuChipIcon } from './icons/CpuChipIcon';
 import { UsersIcon } from './icons/UsersIcon';
-import { DatabaseIcon } from './icons/DatabaseIcon';
 import { PlusIcon } from './icons/PlusIcon';
+import { BookOpenIcon } from './icons/BookOpenIcon';
+import { BoltIcon } from './icons/BoltIcon';
 
 interface SidebarProps {
   activeView: View;
@@ -37,6 +38,13 @@ const NavLink: React.FC<{
   );
 };
 
+const NavGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div>
+        <h3 className="px-3 text-xs font-semibold text-secondary uppercase tracking-wider mb-2">{title}</h3>
+        <div className="space-y-1">{children}</div>
+    </div>
+);
+
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
   const { user } = useAuth();
   
@@ -61,26 +69,23 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
       </div>
 
       <nav className="flex-1 space-y-6">
-        <div>
-          <h3 className="px-3 text-xs font-semibold text-secondary uppercase tracking-wider mb-2">Explore</h3>
-          <div className="space-y-1">
+        <NavGroup title="Explore">
             <NavLink icon={<DiscoverIcon className="w-5 h-5" />} label="Prompts" view={View.PROMPTS} activeView={activeView} onViewChange={onViewChange} />
             <NavLink icon={<CpuChipIcon className="w-5 h-5" />} label="Agents" view={View.AGENTS} activeView={activeView} onViewChange={onViewChange} />
             <NavLink icon={<UsersIcon className="w-5 h-5" />} label="Personas" view={View.PERSONAS} activeView={activeView} onViewChange={onViewChange} />
-            <NavLink icon={<DatabaseIcon className="w-5 h-5" />} label="Contexts" view={View.CONTEXTS} activeView={activeView} onViewChange={onViewChange} />
-          </div>
-        </div>
+        </NavGroup>
+
+        <NavGroup title="Tools">
+            <NavLink icon={<CpuChipIcon className="w-5 h-5" />} label="Only Chat" view={View.ONLY_CHAT} activeView={activeView} onViewChange={onViewChange} />
+            <NavLink icon={<BoltIcon className="w-5 h-5" />} label="Rumble" view={View.RUMBLE} activeView={activeView} onViewChange={onViewChange} />
+        </NavGroup>
 
         {user && (
-          <div>
-            <h3 className="px-3 text-xs font-semibold text-secondary uppercase tracking-wider mb-2">My Library</h3>
-            <div className="space-y-1">
-              <NavLink icon={<DiscoverIcon className="w-5 h-5" />} label="My Prompts" view={View.MY_PROMPTS} activeView={activeView} onViewChange={onViewChange} />
-              <NavLink icon={<CpuChipIcon className="w-5 h-5" />} label="My Agents" view={View.MY_AGENTS} activeView={activeView} onViewChange={onViewChange} />
-              <NavLink icon={<UsersIcon className="w-5 h-5" />} label="My Personas" view={View.MY_PERSONAS} activeView={activeView} onViewChange={onViewChange} />
-              <NavLink icon={<DatabaseIcon className="w-5 h-5" />} label="My Contexts" view={View.MY_CONTEXTS} activeView={activeView} onViewChange={onViewChange} />
-            </div>
-          </div>
+          <NavGroup title="My Library">
+            <NavLink icon={<BookOpenIcon className="w-5 h-5" />} label="Prompts" view={View.MY_PROMPTS} activeView={activeView} onViewChange={onViewChange} />
+            <NavLink icon={<CpuChipIcon className="w-5 h-5" />} label="Agents" view={View.MY_AGENTS} activeView={activeView} onViewChange={onViewChange} />
+            <NavLink icon={<UsersIcon className="w-5 h-5" />} label="Personas" view={View.MY_PERSONAS} activeView={activeView} onViewChange={onViewChange} />
+          </NavGroup>
         )}
       </nav>
 

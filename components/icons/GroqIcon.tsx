@@ -1,15 +1,14 @@
-
 import React from 'react';
 
-interface IconProps extends React.SVGProps<SVGSVGElement> {}
+interface IconProps {
+  className?: string;
+}
 
-export const GroqIcon: React.FC<IconProps> = (props) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm4.5 13.5c0 1.8-1.458 3.25-3.25 3.25S10 17.3 10 15.5v-7C10 6.7 11.458 5.25 13.25 5.25S16.5 6.7 16.5 8.5v.75H14v-1a.75.75 0 0 0-1.5 0v6.5a.75.75 0 0 0 1.5 0v-1h2.5z" />
+const GroqIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm0 192a88 88 0 1 1 88-88a88.1 88.1 0 0 1-88 88Z"/>
+    <path fill="currentColor" d="M184 128a56 56 0 0 1-48.51 55.49a8 8 0 0 1-15-5V80.51a8 8 0 0 1 15-5A56 56 0 0 1 184 128Zm-16 0a40 40 0 0 0-40-40v80a40 40 0 0 0 40-40Z"/>
   </svg>
 );
+
+export default GroqIcon;

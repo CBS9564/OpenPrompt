@@ -1,1 +1,5 @@
-Docs: Mise à jour du README avec les modifications récentes
+fix(core): Corrige plusieurs bugs dans les pages Rumble et Settings
+
+- Corrige la liste des modèles dans Rumble pour utiliser les modèles par défaut lorsque la récupération échoue.
+- Corrige une erreur de référence (`useEffect`) dans la modale des paramètres qui empêchait son ouverture.
+- Assure que la modale des paramètres utilise la clé API locale (et non celle de l'état global) pour charger les modèles Gemini.

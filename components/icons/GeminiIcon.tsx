@@ -1,16 +1,15 @@
-
 import React from 'react';
 
-interface IconProps extends React.SVGProps<SVGSVGElement> {}
+interface IconProps {
+  className?: string;
+}
 
-export const GeminiIcon: React.FC<IconProps> = (props) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm5.292 14.227-2.898-1.207-1.207 2.898-1.3-.894 1.207-2.898-2.898-1.207.894-1.3 2.898 1.207 1.207-2.898 1.3.894-1.207 2.898 2.898 1.207-.894 1.3zM12 17.818c-2.885 0-5.217-2.332-5.217-5.217S9.115 7.384 12 7.384c2.885 0 5.217 2.332 5.217 5.217S14.885 17.818 12 17.818z"/>
-    <path d="M12 8.5c-1.93 0-3.5 1.57-3.5 3.5s1.57 3.5 3.5 3.5 3.5-1.57 3.5-3.5-1.57-3.5-3.5-3.5z" opacity=".15"/>
+const GeminiIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#4285f4" d="M512 85.333c-235.638 0-426.667 191.029-426.667 426.667s191.029 426.667 426.667 426.667c235.638 0 426.667-191.029 426.667-426.667S747.638 85.333 512 85.333z"/>
+    <path fill="#fff" d="M512 512m-213.333 0a213.333 213.333 0 1 0 426.666 0 213.333 213.333 0 1 0-426.666 0z"/>
+    <path fill="#34a853" d="M725.333 512a213.333 213.333 0 0 0-213.333-213.333V512h213.333z"/>
   </svg>
 );
+
+export default GeminiIcon;
