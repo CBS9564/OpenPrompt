@@ -22,9 +22,10 @@ interface CreationPageProps {
   onCancel: () => void;
   apiKeys: ApiKeys;
   fetchedOllamaModels: string[];
+  initialType?: CreationType; // New prop
 }
 
-type CreationType = 'prompt' | 'agent' | 'persona' | 'context';
+type CreationType = 'prompt' | 'agent' | 'persona';
 
 type AttachmentDraft = Omit<Attachment, 'id' | 'itemId'>;
 
@@ -32,12 +33,11 @@ const CREATION_CONFIG = {
     prompt: { label: 'Prompt', icon: <BookOpenIcon className="w-6 h-6"/> },
     agent: { label: 'Agent', icon: <CpuChipIcon className="w-6 h-6"/> },
     persona: { label: 'Persona', icon: <UsersIcon className="w-6 h-6"/> },
-    context: { label: 'Context', icon: <DocumentTextIcon className="w-6 h-6"/> },
 };
 
-const CreationPage: React.FC<CreationPageProps> = ({ onPublish, onCancel, apiKeys }) => {
+const CreationPage: React.FC<CreationPageProps> = ({ onPublish, onCancel, apiKeys, initialType }) => {
   const { user } = useAuth();
-  const [creationType, setCreationType] = useState<CreationType>('prompt');
+  const [creationType, setCreationType] = useState<CreationType>(initialType || 'prompt');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -139,14 +139,6 @@ Description: "${description}"
 ${attachmentContext}
 
 Generated Prompt Template:`;
-    } else if (creationType === 'context') {
-        metaPrompt = `You are an AI assistant designed to generate detailed, structured content for context files. Based on the title and description, create a block of text that is informative and well-organized. The output should only be the context content itself, without any extra explanation or formatting.
-
-Title: "${title}"
-Description: "${description}"
-${attachmentContext}
-
-Generated Context Content:`;
     } else { // For agents and personas
         metaPrompt = `You are an expert in crafting system instructions for AI models. Based on the title and description of a desired AI agent or persona, write a clear, concise, and effective system instruction that defines its behavior, personality, and goals. The output should only be the system instruction text, without any extra explanation or formatting.
 
@@ -178,7 +170,7 @@ Generated System Instruction:`;
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("handleSubmit called!"); // Added for debugging
-    if (!isFormValid || (creationType !== 'context' && !user)) {
+    if (!isFormValid || (!user)) {
       console.log("Form is not valid or user not logged in for non-context type."); // Added for debugging
       return;
     }
@@ -231,7 +223,6 @@ Generated System Instruction:`;
           case 'prompt': return 'Prompt Template';
           case 'agent': return 'Agent System Instruction';
           case 'persona': return 'Persona System Instruction';
-          case 'context': return 'Content';
       }
   }
   
@@ -240,7 +231,6 @@ Generated System Instruction:`;
           case 'prompt': return 'Your prompt text, use {{variables}} for user input.';
           case 'agent': return 'e.g., You are a helpful assistant...';
           case 'persona': return 'e.g., You are a pirate captain...';
-          case 'context': return 'Paste any text, data, or information here.';
       }
   }
 
@@ -256,7 +246,7 @@ Generated System Instruction:`;
                 <div className="p-8">
                     <div className="mb-8">
                         <label className="block text-sm font-medium text-primary mb-3">1. What are you creating?</label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {(Object.keys(CREATION_CONFIG) as CreationType[]).map(type => 
                                 <TypeButton key={type} type={type} />
                             )}
@@ -291,10 +281,9 @@ Generated System Instruction:`;
                         </div>
                     </div>
 
-                    {creationType !== 'context' && (
-                        <div className="mb-8">
-                          <label className="block text-sm font-medium text-primary mb-3">3. Add Attachments (Optional)</label>
-                           <div className="bg-background border border-border p-6 rounded-lg space-y-4">
+                    <div className="mb-8">
+                      <label className="block text-sm font-medium text-primary mb-3">3. Add Attachments (Optional)</label>
+                       <div className="bg-background border border-border p-6 rounded-lg space-y-4">
                                <div className="flex gap-2">
                                   <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" />
                                   <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-card text-primary font-semibold rounded-md hover:bg-card-hover transition-colors">
@@ -324,12 +313,11 @@ Generated System Instruction:`;
                                 )}
                            </div>
                         </div>
-                    )}
 
                     <div className="mb-8">
                       <div className="flex justify-between items-center mb-3">
                           <label className="block text-sm font-medium text-primary">
-                            {creationType !== 'context' ? '4.' : '3.'} {getContentLabel()}
+                            4. {getContentLabel()}
                           </label>
                           <button 
                             type="button" 
@@ -359,7 +347,7 @@ Generated System Instruction:`;
                     {user && (
                       <div className="mb-6">
                         <label className="block text-sm font-medium text-primary mb-3">
-                           {creationType !== 'context' ? '5.' : '4.'} Visibility
+                           5. Visibility
                         </label>
                         <div className="bg-background rounded-lg p-1 flex border border-border">
                           <button type="button" onClick={() => setIsPublic(false)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${!isPublic ? 'bg-accent text-white shadow' : 'text-secondary hover:bg-card'}`}>

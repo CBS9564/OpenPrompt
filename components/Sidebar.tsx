@@ -10,7 +10,7 @@ import { BoltIcon } from './icons/BoltIcon';
 
 interface SidebarProps {
   activeView: View;
-  onViewChange: (view: View) => void;
+  onViewChange: (view: View, initialCreationType?: 'prompt' | 'agent' | 'persona') => void;
 }
 
 const NavLink: React.FC<{
@@ -18,7 +18,7 @@ const NavLink: React.FC<{
   label: string;
   icon: React.ReactNode;
   activeView: View;
-  onViewChange: (view: View) => void;
+  onViewChange: (view: View, initialCreationType?: 'prompt' | 'agent' | 'persona') => void;
   disabled?: boolean;
 }> = ({ view, label, icon, activeView, onViewChange, disabled }) => {
   const isActive = activeView === view;
@@ -47,6 +47,20 @@ const NavGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ titl
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
   const { user } = useAuth();
+
+  const getCreationTypeFromView = (view: View): 'prompt' | 'agent' | 'persona' | undefined => {
+    const cleanView = view.startsWith('/') ? view.substring(1) : view;
+
+    if (cleanView === View.PROMPTS || cleanView === View.MY_PROMPTS.substring(1)) return 'prompt';
+    if (cleanView === View.AGENTS || cleanView === View.MY_AGENTS.substring(1)) return 'agent';
+    if (cleanView === View.PERSONAS || cleanView === View.MY_PERSONAS.substring(1)) return 'persona';
+    return undefined;
+  };
+  
+  const handleCreateClick = () => {
+    const initialType = getCreationTypeFromView(activeView);
+    onViewChange(View.CREATE, initialType);
+  };
   
   return (
     <aside className="w-64 bg-sidebar border-r border-border p-4 flex flex-col">
@@ -60,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
       
       <div className="px-3 mb-6">
         <button 
-            onClick={() => onViewChange(View.CREATE)}
+            onClick={handleCreateClick}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-accent-foreground font-semibold rounded-lg hover:bg-accent/90 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-accent"
         >
             <PlusIcon className="w-5 h-5"/>
@@ -81,11 +95,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
         </NavGroup>
 
         {user && (
-          <NavGroup title="My Library">
-            <NavLink icon={<BookOpenIcon className="w-5 h-5" />} label="Prompts" view={View.MY_PROMPTS} activeView={activeView} onViewChange={onViewChange} />
-            <NavLink icon={<CpuChipIcon className="w-5 h-5" />} label="Agents" view={View.MY_AGENTS} activeView={activeView} onViewChange={onViewChange} />
-            <NavLink icon={<UsersIcon className="w-5 h-5" />} label="Personas" view={View.MY_PERSONAS} activeView={activeView} onViewChange={onViewChange} />
-          </NavGroup>
+          // My Library items are now in the user dropdown menu
+          null
         )}
       </nav>
 

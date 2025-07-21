@@ -119,7 +119,8 @@ const AppContent: React.FC = () => {
     }, [selectedDetailItem, user, token]);
     
     // Navigation Handlers
-    const handleViewChange = (newView: View) => {
+    const handleViewChange = (newView: View, initialCreationType?: 'prompt' | 'agent' | 'persona') => {
+        console.log("App.tsx handleViewChange: newView=", newView, "initialCreationType=", initialCreationType); // Added for debugging
         setSelectedDetailItem(null);
         setSearchQuery('');
         // Use string literals for navigation to ensure correct routes
@@ -131,6 +132,8 @@ const AppContent: React.FC = () => {
             navigate('/my-personas');
         } else if (newView === View.ONLY_CHAT) {
             navigate('/only-chat');
+        } else if (newView === View.CREATE) {
+            navigate('/create', { state: { initialType: initialCreationType } });
         } else {
             navigate(newView);
         }
@@ -463,6 +466,13 @@ const AppContent: React.FC = () => {
     const showSidebar = location.pathname !== '/';
     const showHeader = location.pathname !== '/' || !!user;
 
+    const getCreationTypeFromPath = (pathname: string): CreationType | undefined => {
+        if (pathname === '/prompts' || pathname === '/my-prompts') return 'prompt';
+        if (pathname === '/agents' || pathname === '/my-agents') return 'agent';
+        if (pathname === '/personas' || pathname === '/my-personas') return 'persona';
+        return undefined;
+    };
+
     return (
         <div className="h-screen w-screen flex bg-background text-primary antialiased">
             {showSidebar && <Sidebar activeView={location.pathname as View} onViewChange={handleViewChange} />}
@@ -495,14 +505,22 @@ const AppContent: React.FC = () => {
                         <Route path="/my-agents" element={renderListPage("My Agents", "Your personal collection of agents.", agents, AgentCard, 'agent', true)} />
                         <Route path="/personas" element={renderListPage("Community Personas", "Explore fun and interesting AI personas for roleplaying.", personas, PersonaCard, 'persona', false)} />
                         <Route path="/my-personas" element={renderListPage("My Personas", "Your personal collection of personas.", personas, PersonaCard, 'persona', true)} />
-                        <Route path="/create" element={
-                            <CreationPage 
-                                onPublish={handlePublish}
-                                apiKeys={apiKeys}
-                                selectedLLMProvider={selectedLLMProvider}
-                                selectedLLMModel={selectedLLMModel}
-                            />
-                        } />
+                        <Route path="/create" element={(() => {
+                            const location = useLocation();
+                            const initialTypeFromState = location.state?.initialType; // Get initialType from state
+                            return (
+                                <CreationPage 
+                                    onPublish={handlePublish}
+                                    onCancel={() => navigate(-1)} // Add onCancel prop
+                                    apiKeys={apiKeys}
+                                    fetchedOllamaModels={fetchedOllamaModels}
+                                    fetchedGeminiModels={fetchedGeminiModels}
+                                    selectedLLMProvider={selectedLLMProvider}
+                                    selectedLLMModel={selectedLLMModel}
+                                    initialType={initialTypeFromState}
+                                />
+                            );
+                        })()} />
                         <Route path="/only-chat" element={<OnlyChatPage apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} fetchedGeminiModels={fetchedGeminiModels} selectedLLMProvider={selectedLLMProvider} selectedLLMModel={selectedLLMModel} onSaveLLMSettings={handleSaveLLMSettings} />} />
                         <Route path="/rumble" element={<RumblePage apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} fetchedGeminiModels={fetchedGeminiModels} agents={agents} selectedLLMProvider={selectedLLMProvider} selectedLLMModel={selectedLLMModel} />} />
                         <Route path="/profile" element={<ProfilePage onBack={() => navigate(-1)} />} />

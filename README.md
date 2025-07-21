@@ -127,6 +127,7 @@ OpenPrompt now operates with a client-server architecture:
 
 Voici un résumé des améliorations et corrections apportées depuis la version précédente :
 
+-   **Déplacement du menu "My Library"** : Les liens "My Prompts", "My Agents", "My Personas" ont été déplacés de la barre latérale vers le menu déroulant de l'utilisateur pour une meilleure organisation de l'interface.
 -   **Correction du chargement et de la sélection des modèles Gemini** : Résolution des problèmes où les modèles Gemini ne s'affichaient pas dans les paramètres et où le modèle par défaut était remplacé dans la page Rumble.
 -   **Ajout de la page "Only Chat"** : Une interface de chat simplifiée pour interagir directement avec les modèles.
 -   **Ajout de la page "Rumble"** : Une fonctionnalité permettant de faire interagir plusieurs agents ou modèles entre eux.
