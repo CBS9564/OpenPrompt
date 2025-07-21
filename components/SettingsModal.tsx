@@ -1,13 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ApiKeys, LLMProvider } from '../types';
 import { AVAILABLE_MODELS } from '../constants';
-import { OllamaIcon } from './icons/OllamaIcon';
+import OllamaIcon from './icons/OllamaIcon';
 import { CpuChipIcon } from './icons/CpuChipIcon';
-import { GeminiIcon } from './icons/GeminiIcon';
-import { AnthropicIcon } from './icons/AnthropicIcon';
-import { GroqIcon } from './icons/GroqIcon';
-import { OpenAIIcon } from './icons/OpenAIIcon';
+import GeminiIcon from './icons/GeminiIcon';
+import AnthropicIcon from './icons/AnthropicIcon';
+import GroqIcon from './icons/GroqIcon';
+import OpenAIIcon from './icons/OpenAIIcon';
 import { ElevenLabsIcon } from './icons/ElevenLabsIcon';
 import { ImageIcon } from './icons/ImageIcon';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
@@ -22,6 +22,8 @@ interface SettingsModalProps {
   onSave: (apiKeys: ApiKeys) => void;
   onFetchOllamaModels: () => Promise<{ success: boolean; message: string; models?: string[] }>;
   fetchedOllamaModels: string[];
+  onFetchGeminiModels: (apiKey: string | undefined) => Promise<{ success: boolean; message: string; models?: string[] }>;
+  fetchedGeminiModels: string[];
   selectedLLMProvider: LLMProvider;
   selectedLLMModel: string | null;
   onSaveLLMSettings: (provider: LLMProvider, model: string | null) => void;
@@ -29,7 +31,7 @@ interface SettingsModalProps {
 
 type SettingsTab = 'gemini' | 'anthropic' | 'groq' | 'ollama' | 'huggingface' | 'openai' | 'elevenlabs' | 'stabilityai' | 'runwayml';
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, onClose, onSave, onFetchOllamaModels, fetchedOllamaModels, selectedLLMProvider: initialLLMProvider, selectedLLMModel: initialLLMModel, onSaveLLMSettings }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, onClose, onSave, onFetchOllamaModels, fetchedOllamaModels, onFetchGeminiModels, fetchedGeminiModels, selectedLLMProvider: initialLLMProvider, selectedLLMModel: initialLLMModel, onSaveLLMSettings }) => {
   const [localApiKeys, setLocalApiKeys] = useState<ApiKeys>(initialApiKeys);
   const [activeTab, setActiveTab] = useState<SettingsTab>('gemini');
   const [localSelectedLLMProvider, setLocalSelectedLLMProvider] = useState<LLMProvider>(initialLLMProvider);
@@ -38,6 +40,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, 
   // Ollama specific state
   const [fetchStatus, setFetchStatus] = useState<{ loading: boolean; message: string | null; success: boolean; }>({ loading: false, message: null, success: false });
   const [availableOllamaModels, setAvailableOllamaModels] = useState<string[]>(fetchedOllamaModels);
+  const [availableGeminiModels, setAvailableGeminiModels] = useState<string[]>(fetchedGeminiModels);
+
+  useEffect(() => {
+    setAvailableGeminiModels(fetchedGeminiModels);
+  }, [fetchedGeminiModels]);
+
+  useEffect(() => {
+    setAvailableOllamaModels(fetchedOllamaModels);
+  }, [fetchedOllamaModels]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -66,14 +77,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, 
 
   const handleFetchClick = async () => {
     setFetchStatus({ loading: true, message: 'Loading models...', success: false });
-    const result = await onFetchOllamaModels();
-    setFetchStatus({ loading: false, message: result.message, success: result.success });
-    if (result.success && result.models) {
-      setAvailableOllamaModels(result.models);
-      if (!localApiKeys.ollama?.model && result.models.length > 0) {
+    const result = activeTab === 'gemini' 
+      ? await onFetchGeminiModels(localApiKeys.gemini) 
+      : await onFetchOllamaModels();
+    
+    // The useEffect hooks will handle updating the available models list.
+    // We just need to set the default model if one isn't selected.
+    if (result.success && result.models && result.models.length > 0) {
+      if (activeTab === 'gemini' && !localSelectedLLMModel) {
+        setLocalSelectedLLMModel(result.models[0]);
+      } else if (activeTab === 'ollama' && !localApiKeys.ollama?.model) {
         handleOllamaChange('model', result.models[0]);
       }
     }
+
+    setFetchStatus({ loading: false, message: result.message, success: result.success });
   };
   
   const TabButton: React.FC<{tab: SettingsTab, label: string, icon: React.ReactNode}> = ({tab, label, icon}) => {
@@ -128,7 +146,75 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, 
   const renderContent = () => {
       switch(activeTab) {
           case 'gemini':
-            return <ApiKeyInput provider="gemini" title="Google Gemini" description="API key for Gemini models. You can get one from Google AI Studio." icon={<GeminiIcon />} />
+            return (
+                <div>
+                    <div className="flex items-center gap-4 mb-4">
+                        <GeminiIcon className="w-8 h-8 text-secondary" />
+                        <div>
+                            <h3 className="text-xl font-bold text-primary">Google Gemini</h3>
+                            <p className="text-sm text-secondary mt-1">API key for Gemini models. You can get one from Google AI Studio.</p>
+                        </div>
+                    </div>
+                    <div className="space-y-6">
+                        <div>
+                            <label htmlFor="gemini-key" className="text-sm font-medium text-primary">API Key</label>
+                            <input
+                                id="gemini-key"
+                                type="password"
+                                value={localApiKeys.gemini || ''}
+                                onChange={(e) => handleSimpleKeyChange('gemini', e.target.value)}
+                                placeholder="Enter your API key"
+                                className="w-full p-2 bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-primary"
+                            />
+                            <div className="mt-4">
+                                <button
+                                    type="button"
+                                    onClick={handleFetchClick}
+                                    disabled={fetchStatus.loading || !localApiKeys.gemini}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-card text-primary font-semibold rounded-md disabled:bg-card-hover disabled:text-secondary disabled:cursor-not-allowed hover:bg-card-hover transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-content focus:ring-accent"
+                                >
+                                    {fetchStatus.loading && activeTab === 'gemini' ? (
+                                        <>
+                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Loading...
+                                        </>
+                                    ) : "Load Available Models"}
+                                </button>
+                                {fetchStatus.message && activeTab === 'gemini' && (
+                                    <p className={`mt-2 text-xs text-center ${fetchStatus.success ? 'text-green-600' : 'text-red-600'}`}>
+                                        {fetchStatus.message}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        {availableGeminiModels.length > 0 && (
+                            <div>
+                                <label htmlFor="gemini-model-select" className="flex items-center gap-2 text-sm font-medium text-primary mb-2">
+                                    <CpuChipIcon className="w-5 h-5 text-secondary"/>
+                                    Default Model <span className="text-secondary">(Optional)</span>
+                                </label>
+                                <p className="text-xs text-secondary mb-3">
+                                    Select a default model after loading them from your server.
+                                </p>
+                                <select
+                                    id="gemini-model-select"
+                                    value={localSelectedLLMModel || ''}
+                                    onChange={(e) => setLocalSelectedLLMModel(e.target.value || null)}
+                                    className="w-full p-2 bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-primary"
+                                >
+                                    <option value="">-- No Default Model --</option>
+                                    {availableGeminiModels.map(model => (
+                                        <option key={model} value={model}>{model}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
           case 'anthropic':
             return <ApiKeyInput provider="anthropic" title="Anthropic" description="API key for Claude models." icon={<AnthropicIcon />} />
           case 'groq':
@@ -252,7 +338,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ apiKeys: initialApiKeys, 
                                 disabled={localSelectedLLMProvider === LLMProvider.OLLAMA && availableOllamaModels.length === 0}
                             >
                                 <option value="">-- Select a Model --</option>
-                                {(localSelectedLLMProvider === LLMProvider.OLLAMA ? availableOllamaModels : AVAILABLE_MODELS[localSelectedLLMProvider] || []).map(model => (
+                                {(localSelectedLLMProvider === LLMProvider.OLLAMA ? availableOllamaModels : (localSelectedLLMProvider === LLMProvider.GEMINI ? availableGeminiModels : AVAILABLE_MODELS[localSelectedLLMProvider] || [])).map(model => (
                                     <option key={model} value={model}>{model}</option>
                                 ))}
                             </select>

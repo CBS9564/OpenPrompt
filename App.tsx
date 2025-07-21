@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from
 import { View, Prompt, Agent, Persona, ContextItem, PlaygroundItem, ApiKeys, PublishableItem, SortOrder, MultimodalFilter, User, Comment, OllamaCredentials, LLMProvider } from './types';
 import { useAuth } from './contexts/AuthContext';
 import * as db from './services/dbService';
-import { fetchOllamaModels as fetchOllamaModelsService } from './services/llmService';
+import { fetchOllamaModels as fetchOllamaModelsService, fetchGeminiModels as fetchGeminiModelsService } from './services/llmService';
 
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -19,6 +19,8 @@ import CommunityHeader from './components/CommunityHeader';
 import PromptCard from './components/PromptCard';
 import AgentCard from './components/AgentCard';
 import PersonaCard from './components/PersonaCard';
+import OnlyChatPage from './components/OnlyChatPage';
+import RumblePage from './components/RumblePage';
 
 import AdminPage from './components/AdminPage'; // Import the new AdminPage
 
@@ -32,9 +34,9 @@ const AppContent: React.FC = () => {
     const [prompts, setPrompts] = useState<Prompt[]>([]);
     const [agents, setAgents] = useState<Agent[]>([]);
     const [personas, setPersonas] = useState<Persona[]>([]);
-    const [contexts, setContexts] = useState<ContextItem[]>([]);
     const [apiKeys, setApiKeys] = useState<ApiKeys>({});
     const [fetchedOllamaModels, setFetchedOllamaModels] = useState<string[]>([]);
+    const [fetchedGeminiModels, setFetchedGeminiModels] = useState<string[]>([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [selectedLLMProvider, setSelectedLLMProvider] = useState<LLMProvider>(LLMProvider.GEMINI);
     const [selectedLLMModel, setSelectedLLMModel] = useState<string | null>(null);
@@ -57,7 +59,14 @@ const AppContent: React.FC = () => {
                 }
                 const savedKeys = localStorage.getItem('openprompt_apikeys');
                 if (savedKeys) {
-                    setApiKeys(JSON.parse(savedKeys));
+                    const parsedKeys = JSON.parse(savedKeys);
+                    setApiKeys(parsedKeys);
+                    if (parsedKeys.gemini) {
+                    handleFetchGeminiModels(parsedKeys.gemini);
+                }
+                if (parsedKeys.ollama) {
+                    handleFetchOllamaModels(parsedKeys.ollama);
+                }
                 }
                 // Load LLM preferences
                 const savedProvider = localStorage.getItem('openprompt_llm_provider');
@@ -86,7 +95,6 @@ const AppContent: React.FC = () => {
             setPrompts(await db.getPrompts(authToken));
             setAgents(await db.getAgents(authToken));
             setPersonas(await db.getPersonas(authToken));
-            setContexts(await db.getContexts(authToken));
         } catch (error) {
             console.error("Failed to load data:", error);
         }
@@ -121,8 +129,8 @@ const AppContent: React.FC = () => {
             navigate('/my-agents');
         } else if (newView === View.MY_PERSONAS) {
             navigate('/my-personas');
-        } else if (newView === View.MY_CONTEXTS) {
-            navigate('/my-contexts');
+        } else if (newView === View.ONLY_CHAT) {
+            navigate('/only-chat');
         } else {
             navigate(newView);
         }
@@ -268,16 +276,20 @@ const AppContent: React.FC = () => {
         setApiKeys(keys);
         localStorage.setItem('openprompt_apikeys', JSON.stringify(keys));
         setIsSettingsOpen(false);
-        if (keys.ollama?.baseUrl !== apiKeys.ollama?.baseUrl) {
-             handleFetchOllamaModels(keys.ollama);
-        }
+        // Always refetch models on save to ensure the lists are up-to-date.
+        handleFetchOllamaModels(keys.ollama);
+        handleFetchGeminiModels(keys.gemini);
     };
 
-    const handleSaveLLMSettings = (provider: LLMProvider, model: string) => {
+    const handleSaveLLMSettings = (provider: LLMProvider, model: string | null) => {
         setSelectedLLMProvider(provider);
         setSelectedLLMModel(model);
         localStorage.setItem('openprompt_llm_provider', provider);
-        localStorage.setItem('openprompt_llm_model', model);
+        if (model) {
+            localStorage.setItem('openprompt_llm_model', model);
+        } else {
+            localStorage.removeItem('openprompt_llm_model');
+        }
     };
 
     const handleFetchOllamaModels = async (ollamaCreds: OllamaCredentials | undefined) => {
@@ -288,10 +300,34 @@ const AppContent: React.FC = () => {
         try {
             const models = await fetchOllamaModelsService(ollamaCreds.baseUrl);
             setFetchedOllamaModels(models);
+            if (selectedLLMProvider === LLMProvider.OLLAMA && !selectedLLMModel && models.length > 0) {
+                setSelectedLLMModel(models[0]);
+                localStorage.setItem('openprompt_llm_model', models[0]);
+            }
             return { success: true, message: `Successfully loaded ${models.length} models.`, models };
         } catch (error) {
             const message = error instanceof Error ? error.message : 'An unknown error occurred.';
             setFetchedOllamaModels([]);
+            return { success: false, message };
+        }
+    };
+
+    const handleFetchGeminiModels = async (geminiApiKey: string | undefined) => {
+        if (!geminiApiKey) {
+            setFetchedGeminiModels([]);
+            return { success: false, message: 'Gemini API Key is not set.'};
+        }
+        try {
+            const models = await fetchGeminiModelsService(geminiApiKey);
+            setFetchedGeminiModels(models);
+            if (selectedLLMProvider === LLMProvider.GEMINI && !selectedLLMModel && models.length > 0) {
+                setSelectedLLMModel(models[0]);
+                localStorage.setItem('openprompt_llm_model', models[0]);
+            }
+            return { success: true, message: `Successfully loaded ${models.length} Gemini models.`, models };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+            setFetchedGeminiModels([]);
             return { success: false, message };
         }
     };
@@ -441,7 +477,7 @@ const AppContent: React.FC = () => {
                         onBack={() => setSelectedDetailItem(null)}
                         apiKeys={apiKeys}
                         fetchedOllamaModels={fetchedOllamaModels}
-                        contexts={contexts}
+                        fetchedGeminiModels={fetchedGeminiModels}
                         comments={comments}
                         isLiked={isLiked}
                         onToggleLike={handleToggleLike}
@@ -459,8 +495,16 @@ const AppContent: React.FC = () => {
                         <Route path="/my-agents" element={renderListPage("My Agents", "Your personal collection of agents.", agents, AgentCard, 'agent', true)} />
                         <Route path="/personas" element={renderListPage("Community Personas", "Explore fun and interesting AI personas for roleplaying.", personas, PersonaCard, 'persona', false)} />
                         <Route path="/my-personas" element={renderListPage("My Personas", "Your personal collection of personas.", personas, PersonaCard, 'persona', true)} />
-                        
-                        <Route path="/create" element={<CreationPage onPublish={handlePublish} onCancel={() => navigate('/')} apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} />} />
+                        <Route path="/create" element={
+                            <CreationPage 
+                                onPublish={handlePublish}
+                                apiKeys={apiKeys}
+                                selectedLLMProvider={selectedLLMProvider}
+                                selectedLLMModel={selectedLLMModel}
+                            />
+                        } />
+                        <Route path="/only-chat" element={<OnlyChatPage apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} fetchedGeminiModels={fetchedGeminiModels} selectedLLMProvider={selectedLLMProvider} selectedLLMModel={selectedLLMModel} onSaveLLMSettings={handleSaveLLMSettings} />} />
+                        <Route path="/rumble" element={<RumblePage apiKeys={apiKeys} fetchedOllamaModels={fetchedOllamaModels} fetchedGeminiModels={fetchedGeminiModels} agents={agents} selectedLLMProvider={selectedLLMProvider} selectedLLMModel={selectedLLMModel} />} />
                         <Route path="/profile" element={<ProfilePage onBack={() => navigate(-1)} />} />
                         {user?.role === 'admin' && <Route path="/admin" element={<AdminPage />} />}
                     </Routes>
@@ -473,6 +517,8 @@ const AppContent: React.FC = () => {
                     onSave={handleSaveSettings}
                     fetchedOllamaModels={fetchedOllamaModels}
                     onFetchOllamaModels={() => handleFetchOllamaModels(apiKeys.ollama)}
+                    fetchedGeminiModels={fetchedGeminiModels}
+                    onFetchGeminiModels={handleFetchGeminiModels}
                     selectedLLMProvider={selectedLLMProvider}
                     selectedLLMModel={selectedLLMModel}
                     onSaveLLMSettings={handleSaveLLMSettings}
